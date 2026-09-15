@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>열강의 시대 1900</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- ===== 시작 화면 ===== -->
+<div id="start">
+  <div id="starthead">
+    <h1>열강의 시대 1900</h1>
+    <p>20세기가 열린다. 제국은 팽창하고, 왕관은 흔들리며, 공장은 밤에도 멈추지 않는다.<br>
+       당신의 나라를 열강의 반열에 올려라.</p>
+  </div>
+  <div id="startmapwrap">
+    <svg id="startmap"></svg>
+    <div id="startpick"></div>
+  </div>
+  <div id="startfoot">
+    <label class="muted">종료 연도
+      <select id="optEnd">
+        <option value="1930">1930</option>
+        <option value="1950" selected>1950</option>
+        <option value="1970">1970</option>
+      </select>
+    </label>
+    <label class="muted">난이도
+      <select id="optDiff">
+        <option value="easy">평이 — 열강이 소극적</option>
+        <option value="normal" selected>표준</option>
+        <option value="hard">가혹 — 열강이 집요하다</option>
+      </select>
+    </label>
+    <span class="grow"></span>
+    <span id="pickinfo" class="muted">지도나 목록에서 나라를 고르세요</span>
+    <button id="startBtn" disabled>제국을 시작한다</button>
+  </div>
+</div>
+
+<!-- ===== 본 게임 ===== -->
+<div id="app" style="display:none">
+  <div id="topbar">
+    <div class="flagchip" id="tFlag"></div>
+    <div id="natname">—</div><div id="natgov"></div>
+    <div class="tsep"></div>
+    <div class="stat"><b id="sGold">—</b><span>국고 £m</span></div>
+    <div class="stat"><b id="sBal" class="sub">—</b><span>월 수지</span></div>
+    <div class="tsep"></div>
+    <div class="stat"><b id="sMan">—</b><span>동원 인력</span></div>
+    <div class="stat"><b id="sArmy">—</b><span>육군 / 해군</span></div>
+    <div class="tsep"></div>
+    <div class="stat"><b id="sPP">—</b><span>정치력</span></div>
+    <div class="stat"><b id="sStab">—</b><span>안정도</span></div>
+    <div class="stat"><b id="sPres">—</b><span>위신</span></div>
+    <div class="stat"><b id="sExh">—</b><span>전쟁피로</span></div>
+    <div class="tsep"></div>
+    <div class="stat"><b id="sRank">—</b><span>열강 순위</span></div>
+    <div id="datebox">
+      <div id="date">1900년 1월</div>
+      <button id="btnAuto" title="자동 진행">▶▶ 자동</button>
+      <button id="btnNext">다음 달 ▶</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="mapwrap">
+      <svg id="map"></svg>
+      <div id="mapctl">
+        <button class="mapmode on" data-mode="pol">정치 지도</button>
+        <button class="mapmode" data-mode="ctrl">전선 / 점령</button>
+        <button class="mapmode" data-mode="dev">개발도</button>
+        <button class="mapmode" data-mode="unrest">불만</button>
+        <button class="mapmode" data-mode="army">병력 배치</button>
+        <button class="mapmode" data-mode="rel">외교 관계</button>
+        <button class="mapmode" data-mode="res">자원</button>
+      </div>
+      <div id="zoomctl">
+        <button id="zIn">+</button><button id="zOut">−</button><button id="zFit" title="전체 보기">⤢</button>
+      </div>
+      <div id="legend"></div>
+      <div id="tip"></div>
+    </div>
+
+    <div id="side">
+      <div id="tabs">
+        <button class="tab on" data-t="nation">국가</button>
+        <button class="tab" data-t="prov">지역</button>
+        <button class="tab" data-t="tech">기술</button>
+        <button class="tab" data-t="mil">군사</button>
+        <button class="tab" data-t="dip">외교</button>
+        <button class="tab" data-t="pol">정치</button>
+        <button class="tab" data-t="rank">열강</button>
+      </div>
+      <div id="panel"></div>
+      <div id="bottom">
+        <div id="logbox"></div>
+        <div id="cmdrow">
+          <input id="cmd" placeholder="명령을 입력하세요 — 예: 독일에 선전포고 / 공장 건설 / 5개 사단 모병 / 프랑스와 동맹">
+          <button id="cmdhelp">도움말</button>
+          <button id="cmdgo">실행 ⏎</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modalHost"></div>
+
+<script src="js/mapdata.js"></script>
+<script src="js/db.js"></script>
+<script src="js/game.js"></script>
+<script src="js/turn.js"></script>
+<script src="js/tick.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/events.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/cmd.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

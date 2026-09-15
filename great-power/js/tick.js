@@ -12,7 +12,7 @@ const BUILDINGS = {
   admin  :{ n:'총독부 설치', t:5, cost:p=>25, max:p=>p.adminBuilt, apply:p=>{p.adminBuilt=true; p.unrest=Math.max(0,p.unrest-20);},
             d:'점령지 불만을 크게 낮춘다.' },
 };
-const DIV_COST = 26, DIV_MAN = 4.0, DIV_TIME = 3;
+const DIV_COST = 26, DIV_MAN = 3.0, DIV_TIME = 3;
 const SHIP_COST = 30, SHIP_TIME = 8;
 
 function startBuild(code, provId, type){
@@ -44,8 +44,8 @@ function buildShips(code, count){
   const cost=count*SHIP_COST;
   if(n.gold<cost) return {ok:false,msg:`국고 부족 (필요 £${cost}백만)`};
   let port=false;
-  for(const p of ownedProvs(code)) if(SEA[p.id].size || p.ter==='i'){ port=true; break; }
-  if(!port) return {ok:false,msg:'항구가 없다'};
+  for(const p of ownedProvs(code)) if(p.coast && p.ctrl===code){ port=true; break; }
+  if(!port) return {ok:false,msg:'바다에 면한 항구가 없다'};
   const pending = n.recruiting.filter(r=>r.kind==='navy').reduce((s,r)=>s+r.count,0);
   if(n.navy + pending + count > maxNavy(n))
     return {ok:false,msg:`조선 능력 초과 (연안 공업 기준 최대 ${maxNavy(n)}척)`};

@@ -189,6 +189,7 @@ function nextStep(code, from, to){
 
 /* ---------- 개전 판단 ---------- */
 function aiWarDecision(n){
+  if(G.turn < 14) return;            // 개막 1년은 평화 — 플레이어가 나라를 파악할 시간
   if(warsOf(n.code).length) return;
   if(n.exh > 25 || n.stab < 40) return;
   if(n.ai.agg < 0.15) return;

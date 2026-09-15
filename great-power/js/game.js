@@ -32,6 +32,10 @@ const TRAITS = {
 const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
 let G = null;                      // 전역 게임 상태
+const RAWMAP_S = {};               // 해안 프로빈스 여부
+MAP_RAW.forEach(r=>{ if(r.s) RAWMAP_S[r.id]=1; });
+SEA_LANES.forEach(([a,b])=>{ RAWMAP_S[a]=1; RAWMAP_S[b]=1; });   // 항로가 있으면 당연히 항구도 있다
+['c068','c807'].forEach(id=>{ delete RAWMAP_S[id]; });           // 내륙 보정
 const ADJ = {};                    // 육상 인접
 const SEA = {};                    // 해상 연결
 
@@ -58,7 +62,7 @@ function newGame(playerCode, opts){
       id, name, own, ctrl:own, pop, basePop:pop, dev, ter, res,
       fort: (NATIONS[own] && NATIONS[own].cap===id) ? 2 : 0,
       unrest: 0, siege: 0, rail: dev>=6?1:0,
-      cores: [own], colonial: isColonial(id, own),
+      cores: [own], colonial: isColonial(id, own), coast: !!(RAWMAP_S[id]),
     };
   }
 
@@ -82,7 +86,9 @@ function newGame(playerCode, opts){
 
   // 초기 외교 관계 (1900년 실제 정세)
   setupDiplomacy();
-  for(const c in G.nats){ const n=G.nats[c]; n._m=calcMods(n); n.manpower = freeManpower(n); }
+  for(const c in G.nats){ const n=G.nats[c]; n._m=calcMods(n);
+    n.manpower = freeManpower(n); n.income = nationIncome(n); n.expense = nationExpense(n);
+    n.rp = researchPoints(n); n.maxMan = maxManpower(n); }
   recalcScores();
   logEvent('국가 수립', `${G.nats[playerCode].name}의 20세기가 시작된다.`, 'start');
   return G;
@@ -98,8 +104,8 @@ function isColonial(id, own){
 }
 
 function startingTechs(n){
-  const tier = { GBR:3, GER:3, FRA:3, USA:3, AUH:2, RUS:2, ITA:2, JPN:2, OTT:1, QIN:0,
-                 NLD:2, BEL:2, SWE:2, DEN:2, SUI:2, ESP:1, POR:1, ARG:1, BRA:1, CHL:1 };
+  const tier = { GBR:2, GER:2, FRA:2, USA:2, AUH:1, RUS:1, ITA:1, JPN:1, OTT:1, QIN:0,
+                 NLD:1, BEL:1, SWE:1, DEN:1, SUI:1, ESP:1, POR:0, ARG:0, BRA:0, CHL:0 };
   const lv = tier[n.code] !== undefined ? tier[n.code] : 0;
   for(const id in TECHS){ if(TECHS[id].t <= lv) n.techs[id] = true; }
 }
@@ -186,7 +192,7 @@ function maxManpower(n){
   let mp = 0;
   for(const p of ownedProvs(n.code)){
     const rs = RESOURCE[p.res]||{};
-    let base = p.pop * 0.022 * (rs.man||1);
+    let base = p.pop * 0.045 * (rs.man||1);
     if(p.colonial) base *= 0.14;   // 식민지 병력은 본국만큼 동원되지 않는다
     if(!p.cores.includes(n.code)) base *= 0.5;
     mp += base;
@@ -219,12 +225,14 @@ function freeManpower(n){ return Math.max(0, effectiveManpower(n) - usedManpower
 
 /* 해군은 연안 공업력이 상한이다 */
 function maxNavy(n){
-  let cap = 2;
+  let cap = 0, any = false;
   for(const p of ownedProvs(n.code)){
-    if(!SEA[p.id].size && p.ter!=='i') continue;
-    cap += (1 + p.dev*0.55) * (p.colonial?0.35:1);
+    if(!p.coast) continue;
+    any = true;
+    cap += p.pop * (1 + p.dev*0.4) * 0.0016 * (p.colonial?0.35:1);
   }
-  return Math.round(cap * (n._m ? n._m.nav : 1) * 0.75);
+  if(!any) return 0;                       // 내륙국은 함대를 가질 수 없다
+  return Math.max(2, Math.round((cap+1) * (n._m ? n._m.nav : 1)));
 }
 
 function armyQuality(n){
