@@ -32,14 +32,21 @@ function findNation(text){
   }
   return best;
 }
+// "한성·삼남"을 "한성"만 쳐도 찾을 수 있게 마디 단위로도 맞춰 본다
+function provAliases(p){
+  const out=[p.name.replace(/[·\s]/g,'')];
+  for(const part of p.name.split(/[·\s]+/)) if(part.length>=2) out.push(part);
+  return out;
+}
 function findProvince(text, filter){
   let best=null, bestLen=0;
+  const t=text.replace(/[·\s]/g,'');
   for(const id in G.provs){
     const p=G.provs[id];
     if(filter && !filter(p)) continue;
-    const nm=p.name.replace(/[·\s]/g,'');
-    const t=text.replace(/[·\s]/g,'');
-    if(nm.length>=2 && t.includes(nm) && nm.length>bestLen){ best=id; bestLen=nm.length; }
+    for(const nm of provAliases(p)){
+      if(nm.length>=2 && t.includes(nm) && nm.length>bestLen){ best=id; bestLen=nm.length; }
+    }
   }
   return best;
 }
@@ -167,10 +174,21 @@ function runCommand(raw){
 
   /* --- 이동 --- */
   if(has(T,'이동','보내','파견','배치','옮겨')){
-    const ids=Object.keys(G.provs);
+    // "A에서 B로" 처럼 방향이 분명하면 그대로 따른다 (조사 제거 전 원문에서 찾는다)
+    const dir = raw.match(/([^\s,]+)\s*에서\s*([^\s,]+?)\s*(?:으로|로)(?![가-힣])/);
+    if(dir){
+      const f=findProvince(dir[1]), t2=findProvince(dir[2]);
+      if(f && t2 && f!==t2){
+        const cnt=firstNum(T, me.armies[f]||0);
+        const r=moveArmy(G.player,f,t2,cnt); say(r.msg,r.ok); refreshAll(); return;
+      }
+    }
+    const t=T.replace(/[·\s]/g,'');
     const found=[];
-    for(const id of ids){ const nm=G.provs[id].name.replace(/[·\s]/g,'');
-      if(nm.length>=2 && T.replace(/[·\s]/g,'').includes(nm)) found.push(id); }
+    for(const id in G.provs){
+      if(provAliases(G.provs[id]).some(nm=>nm.length>=2 && t.includes(nm))) found.push(id);
+    }
+    found.sort((a,b)=>(G.nats[G.player].armies[b]||0)-(G.nats[G.player].armies[a]||0));
     if(found.length>=2){
       const from=found.find(i=>me.armies[i]>=1)||found[0];
       const to=found.find(i=>i!==from);

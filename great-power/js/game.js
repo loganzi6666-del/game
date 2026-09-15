@@ -25,7 +25,7 @@ const TRAITS = {
   ITA:m=>{ m.cbcost=0.80; },
   OTT:m=>{ m.stab-=10; m.homedef=1.15; },
   QIN:m=>{ m.man*=1.60; m.atk*=0.75; m.def*=0.85; m.unrest=(m.unrest||0)+5; },
-  KOR:m=>{ m.reformBonus=1.35; },
+  KOR:m=>{ m.res*=1.30; m.grw*=1.25; },   // 광무개혁 — 배움과 개발로 따라잡는다
   ETH:m=>{ m.homedef=1.25; },
 };
 
@@ -147,7 +147,7 @@ function calcMods(n){
   if(TRAITS[n.code]) TRAITS[n.code](m);
   const adm = ADMIN[n.code]||0.7;
   m.adm = adm;
-  m.tax *= adm; m.res *= adm;
+  m.tax *= adm; m.res *= Math.sqrt(adm);   // 교육은 재정보다 천천히 무너진다
   return m;
 }
 
@@ -202,15 +202,19 @@ function maxManpower(n){
 
 function researchPoints(n){
   const m = n._m || (n._m = calcMods(n));
-  let base = 2;
+  let base = 4;                                   // 최소한의 관립 학교와 공창
   for(const p of ownedProvs(n.code)){
     if(p.own!==p.ctrl) continue;
-    let v = p.pop * p.dev * 0.00035;
+    let v = p.pop * p.dev * 0.0008;
     if(p.colonial) v *= 0.25;
     base += v;
   }
   return base * m.res;
 }
+
+/* 기술 비용 — 표 수치를 그대로 쓰지 않고 한 번 걸러 조정한다 */
+const TECH_COST_SCALE = 0.70;
+function techCost(t){ return Math.round((t.c||0) * TECH_COST_SCALE); }
 
 function armyTotal(n){ let a=0; for(const id in n.armies) a += n.armies[id]; return a; }
 
@@ -224,15 +228,16 @@ function effectiveManpower(n){ return maxManpower(n) * (1 - Math.min(0.6, (n.cas
 function freeManpower(n){ return Math.max(0, effectiveManpower(n) - usedManpower(n)); }
 
 /* 해군은 연안 공업력이 상한이다 */
+/* 함대는 항구 하나가 아니라 나라 전체의 공업력이 만든다.
+   단, 바다에 면한 영토가 하나도 없으면 아무것도 띄울 수 없다. */
 function maxNavy(n){
-  let cap = 0, any = false;
+  let any=false, ind=0;
   for(const p of ownedProvs(n.code)){
-    if(!p.coast) continue;
-    any = true;
-    cap += p.pop * (1 + p.dev*0.4) * 0.0016 * (p.colonial?0.35:1);
+    if(p.coast) any = true;
+    ind += p.pop * (1 + p.dev*0.4) * (p.colonial?0.35:1);
   }
-  if(!any) return 0;                       // 내륙국은 함대를 가질 수 없다
-  return Math.max(2, Math.round((cap+1) * (n._m ? n._m.nav : 1)));
+  if(!any) return 0;
+  return Math.max(2, Math.round(ind * 0.0013 * (n._m ? n._m.nav : 1)));
 }
 
 function armyQuality(n){

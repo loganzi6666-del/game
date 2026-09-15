@@ -292,7 +292,7 @@ const NATIONS = {
   NEP:{ name:'네팔 왕국',      adj:'네팔',  color:'#9a4a4a', cap:'c524', gov:'abs', gold:4, pres:4, army:3, navy:0, ai:{agg:.2,exp:.15,dip:.5} },
   BHU:{ name:'부탄',          adj:'부탄',  color:'#c98a5f', cap:'c064', gov:'theo', gold:1, pres:1, army:1, navy:0, ai:{agg:.05,exp:.05,dip:.6} },
   SIA:{ name:'시암 왕국',      adj:'시암',  color:'#c95f8a', cap:'c764', gov:'abs', gold:14, pres:9, army:4, navy:1, ai:{agg:.15,exp:.2,dip:.75} },
-  KOR:{ name:'대한제국',       adj:'대한',  color:'#4a6fa8', cap:'c410', gov:'abs', gold:6, pres:6, army:3, navy:0, ai:{agg:.15,exp:.15,dip:.6},
+  KOR:{ name:'대한제국',       adj:'대한',  color:'#e8dcb0', cap:'c410', gov:'abs', gold:6, pres:6, army:3, navy:0, ai:{agg:.15,exp:.15,dip:.6},
         trait:'광무개혁 — 개혁 성공 시 성장 가속, 초기 국력 미약' },
   OMA:{ name:'오만 술탄국',    adj:'오만',  color:'#8a8a4a', cap:'c512', gov:'abs', gold:3, pres:2, army:1, navy:1, ai:{agg:.1,exp:.1,dip:.6} },
   ETH:{ name:'에티오피아 제국', adj:'에티오피아', color:'#3f8a5f', cap:'c231', gov:'abs', gold:8, pres:9, army:8, navy:0, ai:{agg:.25,exp:.3,dip:.45},

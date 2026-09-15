@@ -172,8 +172,8 @@ function researchTick(n){
     const share = (n.alloc[b]||33)/100;
     n.progress[b] += rp*share;
     const t=TECHS[id];
-    if(n.progress[b] >= t.c){
-      n.progress[b] -= t.c; n.techs[id]=true; n.research[b]=null; n._m=calcMods(n);
+    if(n.progress[b] >= techCost(t)){
+      n.progress[b] -= techCost(t); n.techs[id]=true; n.research[b]=null; n._m=calcMods(n);
       if(n.code===G.player) logEvent('연구 완료', `${t.n} — ${t.d}`, 'tech', n.code);
       // AI는 즉시 다음 기술
       if(n.code!==G.player){ const av=availableTechs(n,b); if(av.length) n.research[b]=av[0]; }
@@ -207,6 +207,7 @@ function buildTick(n){
 }
 
 function manpowerTick(n){
+  for(const id in n.armies) if(!(n.armies[id] > 0.05)) delete n.armies[id];
   n.maxMan = maxManpower(n);
   n.casualties = Math.max(0, (n.casualties||0) - 0.35*(1 + (n.techs.p11?0.4:0)));
   n.manpower = freeManpower(n);
@@ -252,7 +253,7 @@ function provinceTick(){
     // 핵심주 편입 (오래 지배하면)
     if(p.own===p.ctrl && !p.cores.includes(p.own) && p.unrest<8 && rnd()<0.004){
       p.cores.push(p.own);
-      logEvent('동화', `${p.name}이(가) ${owner.adj}의 핵심 영토가 되었다.`, 'politics', p.own);
+      logEvent('동화', `${Ji(p.name)} ${owner.adj}의 핵심 영토가 되었다.`, 'politics', p.own);
     }
     // 반란
     if(p.unrest>68 && rnd()<0.012){

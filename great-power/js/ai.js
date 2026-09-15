@@ -189,7 +189,9 @@ function nextStep(code, from, to){
 
 /* ---------- 개전 판단 ---------- */
 function aiWarDecision(n){
-  if(G.turn < 14) return;            // 개막 1년은 평화 — 플레이어가 나라를 파악할 시간
+  const grace = {easy:60, normal:30, hard:14}[G.difficulty] || 30;
+  if(G.turn < grace) return;         // 개막 유예 — 플레이어가 나라를 세울 시간
+  // 이미 열강과 싸우는 나라에 굳이 한 번 더 뛰어들지는 않는다(하드 제외)
   if(warsOf(n.code).length) return;
   if(n.exh > 25 || n.stab < 40) return;
   if(n.ai.agg < 0.15) return;
@@ -218,6 +220,8 @@ function aiWarDecision(n){
     v -= (t.guaranteedBy||[]).length * 1.2;      // 열강의 보장은 억지력
     v += Math.min(2.0, (t.aggression||0)/25);    // 침략국은 모두의 표적
     v -= Math.min(2.5, n.exh/20) + Math.max(0, (60-n.stab)/25);
+    const victimWars = warsOf(c).length;
+    if(victimWars) v -= (G.difficulty==='hard'? 0.4 : 1.6) * victimWars;   // 남의 전쟁에 편승하는 것도 부담이다
     v *= (0.55 + n.ai.agg*0.9);
     if(v>bestV){ bestV=v; best=c; }
   }

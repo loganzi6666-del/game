@@ -2,6 +2,17 @@
    열강의 시대 1900 — 턴 처리 / 전쟁 / 외교
    ============================================================ */
 
+/* 한국어 조사 — 받침 유무에 따라 골라 쓴다 */
+function hasJong(w){
+  if(!w) return false;
+  const c=w.charCodeAt(w.length-1);
+  if(c<0xAC00||c>0xD7A3) return /[1360-9lmnr]$/i.test(w[w.length-1]);
+  return (c-0xAC00)%28!==0;
+}
+function J(word, withJong, withoutJong){ return word + (hasJong(word)?withJong:withoutJong); }
+const Jeun=w=>J(w,'은','는'), Ji=w=>J(w,'이','가'), Jeul=w=>J(w,'을','를'),
+      Jwa=w=>J(w,'과','와'), Jro=w=>J(w,'으로','로');
+
 function provValue(p){ return p.pop*0.01*(1+p.dev*0.4) + p.dev*2 + 4; }
 function natValue(code){ let v=0; for(const p of ownedProvs(code)) v+=provValue(p); return v; }
 
@@ -74,13 +85,13 @@ function declareWar(a, b, cb, goals){
   for(const al of B.allies){ const N=G.nats[al];
     if(N && N.alive && !w.def.includes(al) && !w.att.includes(al)){
       const loyal = (N.relations[b]||0) + (N._m && 0) + 30 - (N.exh*1.5);
-      if(loyal > 20 || N.ai.dip>0.7){ w.def.push(al); logEvent('참전', `${N.name}이(가) 동맹 의무에 따라 ${B.adj} 편에서 참전했다.`, 'war'); }
-      else logEvent('동맹 파기', `${N.name}은(는) ${B.adj}의 호출을 거부했다.`, 'diplo');
+      if(loyal > 20 || N.ai.dip>0.7){ w.def.push(al); logEvent('참전', `${Ji(N.name)} 동맹 의무에 따라 ${B.adj} 편에서 참전했다.`, 'war'); }
+      else logEvent('동맹 파기', `${Jeun(N.name)} ${B.adj}의 호출을 거부했다.`, 'diplo');
     }
   }
   for(const al of A.allies){ const N=G.nats[al];
     if(N && N.alive && !w.att.includes(al) && !w.def.includes(al)){
-      if((N.relations[a]||0) > 40 && N.ai.agg > 0.4){ w.att.push(al); logEvent('참전', `${N.name}이(가) ${A.adj} 편에서 참전했다.`, 'war'); }
+      if((N.relations[a]||0) > 40 && N.ai.agg > 0.4){ w.att.push(al); logEvent('참전', `${Ji(N.name)} ${A.adj} 편에서 참전했다.`, 'war'); }
     }
   }
   G.wars.push(w);
@@ -90,7 +101,7 @@ function declareWar(a, b, cb, goals){
     const N=G.nats[c];
     N.relations[a] = (N.relations[a]||0) - Math.round(C.aggr*3 + (cb==='none'?12:0));
   }
-  logEvent('선전포고', `${A.name}이(가) ${B.name}에 선전포고했다. 명분: ${C.n}`, 'war', a);
+  logEvent('선전포고', `${Ji(A.name)} ${B.name}에 선전포고했다. 명분: ${C.n}`, 'war', a);
   return {ok:true, war:w};
 }
 
@@ -103,7 +114,7 @@ function attack(code, from, to, divs){
   if(!neighbours(from).includes(to)) return {ok:false,msg:'인접하지 않은 지역이다'};
   const enemyOwner = pt.ctrl;
   const w = atWarWith(code, enemyOwner);
-  if(!w) return {ok:false,msg:`${G.nats[enemyOwner]?G.nats[enemyOwner].adj:'그 나라'}와(과) 전쟁 중이 아니다`};
+  if(!w) return {ok:false,msg:`${Jwa(G.nats[enemyOwner]?G.nats[enemyOwner].adj:'그 나라')} 전쟁 중이 아니다`};
   const avail = n.armies[from]||0;
   divs = Math.min(divs, avail);
   if(divs<1) return {ok:false,msg:'출발 지역에 병력이 없다'};
@@ -126,7 +137,11 @@ function attack(code, from, to, divs){
   const lossA = Math.min(divs, Math.max(0, divs * 0.16 / Math.max(0.5, Math.min(2.2, ratio))));
   const lossD = Math.min(defDivs, defDivs * 0.16 * Math.max(0.5, Math.min(2.2, ratio)));
   n.armies[from] = Math.max(0, avail - Math.round(lossA*10)/10);
-  if(en && defDivs) en.armies[to] = Math.max(0, defDivs - Math.round(lossD*10)/10);
+  if(n.armies[from] < 0.05) delete n.armies[from];
+  if(en && defDivs){
+    en.armies[to] = Math.max(0, defDivs - Math.round(lossD*10)/10);
+    if(en.armies[to] < 0.05) delete en.armies[to];
+  }
   n.exh += 0.25; if(en) en.exh += 0.22;
   // 전사자는 한동안 동원 가능 인력에서 빠진다
   const mmA = maxManpower(n)||1;
@@ -147,7 +162,7 @@ function attack(code, from, to, divs){
     if(en && en.armies[to]){                       // 패잔병 후퇴
       const retreat = retreatTarget(en, to);
       if(retreat){ en.armies[retreat]=(en.armies[retreat]||0)+en.armies[to]; }
-      en.armies[to]=0;
+      delete en.armies[to];
     }
     occupyProvince(to, code, w);
   } else if(ratio < 0.82){
@@ -161,7 +176,7 @@ function attack(code, from, to, divs){
     divs, defDivs, lossA:+lossA.toFixed(1), lossD:+lossD.toFixed(1), ratio:+ratio.toFixed(2), result, naval,
   };
   logEvent(`전투: ${pt.name}`,
-    `${n.adj}군 ${divs.toFixed(0)}개 사단이 ${pt.name}을(를) 공격 — ${result}. ` +
+    `${n.adj}군 ${divs.toFixed(0)}개 사단이 ${Jeul(pt.name)} 공격 — ${result}. ` +
     `아군 손실 ${lossA.toFixed(1)}, 적 손실 ${lossD.toFixed(1)}.`, result==='승리'?'win':'war', code);
   updateWarScore(w);
   return {ok:true, report};
@@ -179,7 +194,7 @@ function occupyProvince(id, code, w){
   const p = G.provs[id];
   const prev = p.ctrl;
   p.ctrl = code; p.unrest = Math.min(60, p.unrest + 18); p.siege = 0;
-  logEvent('점령', `${G.nats[code].adj}군이 ${p.name}을(를) 점령했다.`, 'win', code);
+  logEvent('점령', `${G.nats[code].adj}군이 ${Jeul(p.name)} 점령했다.`, 'win', code);
   if(prev && G.nats[prev]) G.nats[prev].exh += 0.6;
   // 수도 함락
   if(G.nats[prev] && G.nats[prev].cap===id){
@@ -248,11 +263,19 @@ function makePeace(w, winnerSide, termId, chosenProvs){
     for(const p of ownedProvs(L.code)) transferProvince(p.id, W.code);
     L.alive=false; desc = `${L.name} 병합`; W.pres += 20; W.aggression += 25;
     for(const c in G.nats) if(c!==W.code) G.nats[c].relations[W.code]=(G.nats[c].relations[W.code]||0)-18;
-    logEvent('국가 소멸', `${L.name}이(가) 지도에서 사라졌다.`, 'bad', L.code);
+    logEvent('국가 소멸', `${Ji(L.name)} 지도에서 사라졌다.`, 'bad', L.code);
   }
 
-  // 점령지 원상 복구
-  for(const id in G.provs){ const p=G.provs[id]; if(p.ctrl!==p.own && G.nats[p.own] && G.nats[p.own].alive) p.ctrl=p.own; }
+  // 점령지 원상 복구 — 이 전쟁의 당사국 사이에서만. 다른 전쟁의 전선은 건드리지 않는다.
+  const parties = new Set([...w.att, ...w.def]);
+  for(const id in G.provs){
+    const p = G.provs[id];
+    if(p.ctrl===p.own) continue;
+    if(!parties.has(p.own) || !parties.has(p.ctrl)) continue;
+    if(!G.nats[p.own] || !G.nats[p.own].alive) continue;
+    if(atWarWith(p.own, p.ctrl)) continue;        // 아직 다른 전쟁으로 싸우는 중이면 그대로 둔다
+    p.ctrl = p.own;
+  }
   // 정전 협정 5년
   for(const a of w.att) for(const b of w.def){
     if(G.nats[a]) G.nats[a].truces[b]=G.turn+60;
@@ -275,7 +298,7 @@ function transferProvince(id, toCode){
   if(G.nats[from]) delete G.nats[from].armies[id];
   if(G.nats[from] && ownedProvs(from).length===0){
     G.nats[from].alive=false;
-    logEvent('국가 소멸', `${G.nats[from].name}이(가) 멸망했다.`, 'bad', from);
+    logEvent('국가 소멸', `${Ji(G.nats[from].name)} 멸망했다.`, 'bad', from);
   }
   if(G.nats[from] && G.nats[from].cap===id && G.nats[from].alive){
     const rest = ownedProvs(from); if(rest.length) G.nats[from].cap = rest[0].id;
@@ -316,31 +339,31 @@ function doDiplo(a, b, act){
   const set = v=>{ B.relations[a]=Math.max(-100,Math.min(100,v)); A.relations[b]=B.relations[a]; };
 
   switch(act){
-    case 'improve': set(rel()+12); return {ok:true,msg:`${B.adj}와의 관계가 개선되었다 (${rel()})`};
+    case 'improve': set(rel()+12); return {ok:true,msg:`${Jwa(B.adj)}의 관계가 개선되었다 (${rel()})`};
     case 'insult':  set(rel()-15); A.pres+=1; return {ok:true,msg:`${B.adj}를 규탄했다`};
     case 'subsidy': set(rel()+20); return {ok:true,msg:`${B.adj}에 재정 지원을 보냈다`};
     case 'breakally':
       A.allies=A.allies.filter(x=>x!==b); B.allies=B.allies.filter(x=>x!==a);
-      A.pres-=5; set(rel()-25); return {ok:true,msg:`${B.adj}와의 동맹을 파기했다`};
+      A.pres-=5; set(rel()-25); return {ok:true,msg:`${Jwa(B.adj)}의 동맹을 파기했다`};
     case 'nap':
       if(rel()<10) return {ok:false,msg:'관계가 나빠 거절당했다'};
       A.truces[b]=G.turn+120; B.truces[a]=G.turn+120; set(rel()+8);
-      return {ok:true,msg:`${B.adj}와 불가침 조약을 맺었다`};
+      return {ok:true,msg:`${Jwa(B.adj)} 불가침 조약을 맺었다`};
     case 'guarantee':
       if(!A.guarantees.includes(b)) A.guarantees.push(b);
       set(rel()+15); return {ok:true,msg:`${B.adj}의 독립을 보장했다`};
     case 'alliance': {
       const want = rel() + (B.ai.dip*30) - (B.score>A.score?15:0) + (sharedEnemy(a,b)?25:0);
-      if(want < 55) return {ok:false,msg:`${B.adj}이(가) 동맹 제안을 거절했다 (호감 ${Math.round(want)}/55)`};
+      if(want < 55) return {ok:false,msg:`${Ji(B.adj)} 동맹 제안을 거절했다 (호감 ${Math.round(want)}/55)`};
       A.allies.push(b); B.allies.push(a); set(Math.max(rel(),70));
-      logEvent('동맹 체결', `${A.name}과(와) ${B.name}이(가) 동맹을 맺었다.`, 'diplo');
-      return {ok:true,msg:`${B.adj}와 동맹을 체결했다!`};
+      logEvent('동맹 체결', `${Jwa(A.name)} ${Ji(B.name)} 동맹을 맺었다.`, 'diplo');
+      return {ok:true,msg:`${Jwa(B.adj)} 동맹을 체결했다!`};
     }
     case 'demandTrib': {
       const power = A.score/(B.score+1);
       if(power > 2.5 && rel() > -50){ B.gold*=0.8; A.gold+=B.gold*0.25; set(rel()-20);
-        return {ok:true,msg:`${B.adj}이(가) 조공을 바쳤다`}; }
-      set(rel()-35); return {ok:false,msg:`${B.adj}이(가) 굴욕적 요구를 거부했다`};
+        return {ok:true,msg:`${Ji(B.adj)} 조공을 바쳤다`}; }
+      set(rel()-35); return {ok:false,msg:`${Ji(B.adj)} 굴욕적 요구를 거부했다`};
     }
   }
   return {ok:false,msg:'알 수 없는 행동'};

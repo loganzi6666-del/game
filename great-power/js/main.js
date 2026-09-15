@@ -135,10 +135,13 @@ function stopAuto(){
 /* ---------- 저장 ---------- */
 function saveGame(){
   try{
-    const data={G, v:2};
-    // Set/함수 없는 순수 객체만 저장
-    localStorage.setItem('gp1900', JSON.stringify(data));
-    toast('저장했다', true);
+    // 대기 중인 사건 객체에는 함수가 들어 있어 직렬화되지 않는다 — 저장 전에 정리한다
+    const pending = G.pending;
+    G.pending = [];
+    const json = JSON.stringify({G, v:2});
+    G.pending = pending;
+    localStorage.setItem('gp1900', json);
+    toast(`${G.year}년 ${MONTHS[G.month]} 시점으로 저장했다`, true);
   }catch(e){ toast('저장 실패: '+e.message, false); }
 }
 function loadGame(){
@@ -147,6 +150,7 @@ function loadGame(){
     if(!raw) return toast('저장된 게임이 없다', false);
     const data=JSON.parse(raw);
     G=data.G;
+    G.pending = G.pending || [];
     for(const c in G.nats) G.nats[c]._m=calcMods(G.nats[c]);
     if($('#start').style.display!=='none'){
       $('#start').style.display='none'; $('#app').style.display='flex';

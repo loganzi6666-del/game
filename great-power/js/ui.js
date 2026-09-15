@@ -383,7 +383,12 @@ function panelNation(){
     <div class="btnrow">
       <button class="btn sm" data-act="loan">국채 £100 발행</button>
       <button class="btn sm" data-act="repay">부채 상환</button>
-    </div></div>`;
+    </div></div>
+    <div class="sec"><h3>기록</h3><div class="btnrow">
+      <button class="btn sm" data-act="save">저장</button>
+      <button class="btn sm" data-act="load">불러오기</button>
+      <button class="btn sm" data-act="help">명령어 도움말</button>
+    </div><div class="tiny" style="margin-top:5px">저장은 이 브라우저에 보관된다.</div></div>`;
   setTimeout(()=>{ const r=$('#taxR'); if(r) r.addEventListener('change',()=>{
     G.nats[G.player].taxRate=r.value/100; refreshAll(); }); },0);
   return h;
@@ -470,9 +475,9 @@ function panelTech(){
     <div class="tiny">이 분야에 배분할 비율. 나머지는 다른 두 분야가 나눠 갖는다.</div></div>`;
   const cur=n.research[b];
   if(cur){
-    const t=TECHS[cur], pr=n.progress[b]||0;
-    h+=`<div class="card" style="border-color:var(--gold)"><h4>연구 중: ${t.n}<span class="tc">${fmt(pr)} / ${t.c}</span></h4>
-      ${bar(pr,t.c,BRANCH[b].c)}<div class="tiny" style="margin-top:5px">${esc(t.d)}</div></div>`;
+    const t=TECHS[cur], pr=n.progress[b]||0, cost=techCost(t);
+    h+=`<div class="card" style="border-color:var(--gold)"><h4>연구 중: ${t.n}<span class="tc">${fmt(pr)} / ${cost}<br><span class="tiny">${Math.ceil((cost-pr)/Math.max(0.1,researchPoints(n)*n.alloc[b]/100))}개월 남음</span></span></h4>
+      ${bar(pr,cost,BRANCH[b].c)}<div class="tiny" style="margin-top:5px">${esc(t.d)}</div></div>`;
   }
   const tiers={};
   for(const id in TECHS){ const t=TECHS[id]; if(t.b!==b) continue; (tiers[t.t]=tiers[t.t]||[]).push(id); }
@@ -494,7 +499,7 @@ function panelTech(){
         <div style="flex:1"><div class="tn">${done?'✔ ':''}${t.n}</div><div class="td">${esc(t.d)}</div><div class="effs">${effs}</div>
         ${locked?`<div class="tiny" style="color:#d9a441;margin-top:3px">${!yearOk?t.y+'년 이후':'선행: '+t.r.filter(r=>!n.techs[r]).map(r=>TECHS[r].n).join(', ')}</div>`:''}</div>
         <div style="text-align:right">
-          <div class="tc">${done?'완료':fmt(t.c)}</div>
+          <div class="tc">${done?'완료':fmt(techCost(t))}</div>
           ${(!done&&!locked&&!active)?`<button class="btn sm" data-act="research" data-id="${id}" style="margin-top:4px">연구</button>`:''}
         </div></div>`;
     }
@@ -692,6 +697,9 @@ function handleAct(d){
       n.armies[id]-=1; if(n.armies[id]<0.5) delete n.armies[id];
       toast(`${G.provs[id].name}의 1개 사단을 해산했다`, true); break;
     }
+    case 'save':   saveGame(); return;
+    case 'load':   loadGame(); return;
+    case 'help':   showHelp(); return;
     case 'warmodal': showWarModal(d.c); return;
     case 'peace':  showPeaceModal(+d.war); return;
   }
