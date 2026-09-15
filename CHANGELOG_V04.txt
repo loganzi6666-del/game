@@ -1,0 +1,9 @@
+V0.4
+- Expanded careers to 11 total.
+- Added market portfolio with six investable assets.
+- Added monthly market regimes and macro-linked returns.
+- Added fees/taxes, average cost and realized gains.
+- Added realistic monthly cost structure and lower starting cash.
+- Added six NPCs and NPC life progression.
+- Added advanced presidency systems: cabinet, intelligence, security, coalition and military-risk management.
+- Preserved V0.3 save compatibility with migration through ensureV4().

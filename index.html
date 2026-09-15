@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LIFE : RISE V0.9.9</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="v03.css" />
+  <link rel="stylesheet" href="v04.css" />
+  <link rel="stylesheet" href="v05.css" />
+  <link rel="stylesheet" href="v06.css" />
+  <link rel="stylesheet" href="v07.css" />
+  <link rel="stylesheet" href="v08.css" />
+  <link rel="stylesheet" href="v09.css" />
+  <link rel="stylesheet" href="v091.css" />
+  <link rel="stylesheet" href="v092.css" />
+  <link rel="stylesheet" href="v093.css" />
+  <link rel="stylesheet" href="v094.css" />
+  <link rel="stylesheet" href="v095.css" />
+<link rel="stylesheet" href="v096.css">
+<link rel="stylesheet" href="v097.css">
+<link rel="stylesheet" href="v098.css">
+<link rel="stylesheet" href="v099.css">
+</head>
+<body>
+<div id="v8root"></div>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brandMark">LR</div>
+      <div><b>LIFE : RISE</b><span>Visual Life & Power Sandbox · V0.9</span></div>
+    </div>
+    <div class="top-center">
+      <div class="date" id="dateLabel">2026.09.13</div>
+      <div class="clock-note">1행동 = 1~7일</div>
+    </div>
+    <div class="top-actions">
+      <button id="politicsBtn">🏛 국가</button>
+      <button id="assetsBtn">💎 자산</button>
+      <button id="saveBtn">💾 저장</button>
+    </div>
+  </header>
+
+  <main class="gameShell">
+    <aside class="sidebar left">
+      <section class="profile card">
+        <div class="portrait">
+          <div class="hair"></div><div class="head"><i></i><i></i><em></em></div><div class="torso"></div>
+        </div>
+        <div class="profileText">
+          <strong id="nameLabel">Logan</strong>
+          <span id="lifeLabel">20세 · 무직</span>
+          <div class="badge" id="rankBadge">평범한 시민</div>
+        </div>
+      </section>
+
+      <section class="money card">
+        <label>총자산</label><strong id="networthLabel">₩0</strong>
+        <div class="moneyrow"><span>현금</span><b id="cashLabel">₩0</b></div>
+        <div class="moneyrow"><span>월 현금흐름</span><b id="flowLabel">₩0</b></div>
+      </section>
+
+      <section class="stats card">
+        <div class="mini-title">능력</div>
+        <div class="stat"><span>🧠 지능</span><b id="intStat"></b></div>
+        <div class="stat"><span>🗣 매력</span><b id="chaStat"></b></div>
+        <div class="stat"><span>👑 리더십</span><b id="leadStat"></b></div>
+        <div class="stat"><span>♟ 정치력</span><b id="polStat"></b></div>
+        <div class="stat"><span>🤝 인맥</span><b id="netStat"></b></div>
+        <div class="stat"><span>❤️ 건강</span><b id="healthStat"></b></div>
+        <div class="stat"><span>😵 스트레스</span><b id="stressStat"></b></div>
+      </section>
+
+      <section class="influence card">
+        <div class="mini-title">권력 기반</div>
+        <div class="meter"><span>정치</span><i><em id="politicalBar"></em></i><b id="politicalInf"></b></div>
+        <div class="meter"><span>기업</span><i><em id="businessBar"></em></i><b id="businessInf"></b></div>
+        <div class="meter"><span>군</span><i><em id="militaryBar"></em></i><b id="militaryInf"></b></div>
+        <div class="meter"><span>언론</span><i><em id="mediaBar"></em></i><b id="mediaInf"></b></div>
+        <div class="meter"><span>지하</span><i><em id="underBar"></em></i><b id="underInf"></b></div>
+      </section>
+    </aside>
+
+    <section class="center">
+      <div class="sceneHeader">
+        <div>
+          <strong id="sceneName">수도권</strong>
+          <span id="sceneSub">WASD 이동 · 건물 클릭 · E 상호작용</span>
+        </div>
+        <button id="exitInterior" class="hidden">← 도시로</button>
+      </div>
+
+      <div id="world" class="world">
+        <div class="district d1">주거</div><div class="district d2">업무</div><div class="district d3">권력</div>
+        <div class="road hroad r1"></div><div class="road hroad r2"></div>
+        <div class="road vroad c1"></div><div class="road vroad c2"></div>
+
+        <button class="building home" data-loc="home"><span>🏠</span><b>HOME</b><small>집</small></button>
+        <button class="building corp" data-loc="corp"><span>🏢</span><b>NOVA GROUP</b><small>대기업</small></button>
+        <button class="building uni" data-loc="uni"><span>🎓</span><b>UNIVERSITY</b><small>대학</small></button>
+        <button class="building parliament" data-loc="parliament"><span>🏛️</span><b>ASSEMBLY</b><small>국회·정당</small></button>
+        <button class="building military" data-loc="military"><span>🪖</span><b>DEFENSE HQ</b><small>군</small></button>
+        <button class="building bank" data-loc="bank"><span>🏦</span><b>CENTRAL BANK</b><small>은행</small></button>
+        <button class="building estate" data-loc="estate"><span>🏙️</span><b>REALTY</b><small>부동산</small></button>
+        <button class="building dealer" data-loc="dealer"><span>🚘</span><b>MOTORS</b><small>자동차</small></button>
+        <button class="building mall" data-loc="mall"><span>🛍️</span><b>THE GALLERIA</b><small>쇼핑</small></button>
+        <button class="building lounge" data-loc="lounge"><span>🥂</span><b>THE CLUB</b><small>사교</small></button>
+        <button class="building media" data-loc="media"><span>📺</span><b>NEWS 24</b><small>언론</small></button>
+        <button class="building underworld" data-loc="underworld"><span>🌃</span><b>BACKSTREET</b><small>지하세계</small></button>
+
+        <div id="player" class="player">
+          <div class="shadow"></div><div class="pbody"></div><div class="phead"></div><div class="phair"></div>
+        </div>
+        <div class="mapHint">클릭해서 이동 · 가까운 건물에서 E</div>
+      </div>
+
+      <div id="interior" class="interior hidden">
+        <div id="interiorBackdrop" class="interiorBackdrop"></div>
+        <div id="hotspots" class="hotspots"></div>
+        <div class="interiorAvatar">
+          <div class="shadow"></div><div class="pbody"></div><div class="phead"></div><div class="phair"></div>
+        </div>
+      </div>
+
+      <div class="quickbar">
+        <button data-quick="rest">🛏 <span>휴식</span></button>
+        <button data-quick="study">📚 <span>자기계발</span></button>
+        <button data-quick="social">🤝 <span>연락</span></button>
+        <button data-quick="work">💼 <span>일하기</span></button>
+        <button data-quick="next">⏩ <span>7일 보내기</span></button>
+      </div>
+    </section>
+
+    <aside class="sidebar right">
+      <section class="power card heroPower">
+        <div>
+          <label>POWER INDEX</label>
+          <strong id="powerIndex">0</strong>
+        </div>
+        <div class="powerRing"><span id="powerRingText">0</span></div>
+      </section>
+
+      <section class="national card">
+        <div class="mini-title">대한민국 · 2026.09 기준</div>
+        <div class="president">
+          <div class="seal">大</div>
+          <div><span>현직 대통령</span><strong>이재명</strong><small>제21대 대통령</small></div>
+        </div>
+        <div class="nationalGrid">
+          <div><span>정부형태</span><b>대통령제</b></div>
+          <div><span>대통령</span><b>5년 단임</b></div>
+          <div><span>국회</span><b>단원제 300석</b></div>
+          <div><span>의원 임기</span><b>4년</b></div>
+        </div>
+        <small class="simnote">※ 위 제도/현직은 시작 시점 기준. 이후 선거·사건은 게임 시뮬레이션입니다.</small>
+      </section>
+
+      <section class="nationMeters card">
+        <div class="mini-title">국가 상황</div>
+        <div class="meter2"><span>경제</span><b id="economyLabel"></b><i><em id="economyBar"></em></i></div>
+        <div class="meter2"><span>안정도</span><b id="stabilityLabel"></b><i><em id="stabilityBar"></em></i></div>
+        <div class="meter2"><span>민심</span><b id="moodLabel"></b><i><em id="moodBar"></em></i></div>
+      </section>
+
+      <section class="feed card">
+        <div class="mini-title">LIVE FEED</div>
+        <div id="feed"></div>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="modalBox">
+    <button id="modalClose" class="x">×</button>
+    <div id="modalIcon" class="modalIcon">🏢</div>
+    <h2 id="modalTitle">제목</h2>
+    <p id="modalText">내용</p>
+    <div id="modalBody"></div>
+    <div id="modalActions" class="modalActions"></div>
+  </div>
+</div>
+
+<div id="startScreen" class="startScreen">
+  <div class="startCard">
+    <div class="startLogo">LIFE : RISE</div>
+    <h1>당신은 어디까지 올라갈 것인가?</h1>
+    <p>직장인, 기업가, 장군, 정치인, 범죄조직의 거물. 돈을 벌고 관계를 만들고 권력을 쌓아 인생과 국가의 흐름을 바꾸세요.</p>
+    <div class="startForm">
+      <label>이름<input id="startName" value="Logan" maxlength="12"></label>
+      <label>시작 배경
+        <select id="startBg">
+          <option value="ordinary">평범한 가정 · 균형형</option>
+          <option value="poor">가난한 가정 · 현금 적음 / 야망 높음</option>
+          <option value="elite">엘리트 가정 · 학력/인맥 우위</option>
+          <option value="military">군인 집안 · 군 인맥 우위</option>
+          <option value="wealthy">부유한 가정 · 자본 우위</option>
+        </select>
+      </label>
+    </div>
+    <button id="startBtn">새 인생 시작</button>
+    <button id="continueBtn" class="ghost hidden">저장된 인생 이어하기</button>
+    <small>시작일: 2026년 9월 13일 · 게임 내 정치 사건/미래 인물은 가상 시뮬레이션</small>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="game.js"></script>
+<script src="v03.js"></script>
+<script src="v04.js"></script>
+<script src="v05.js"></script>
+<script src="v06.js"></script>
+<script src="v07.js"></script>
+<script src="v08.js"></script>
+<script src="v09.js"></script>
+<script src="v091.js"></script>
+<script src="v092.js"></script>
+<script src="v093.js"></script>
+<script src="v094.js"></script>
+<script src="v095.js"></script>
+<script src="v096.js"></script>
+<script src="v097.js"></script>
+<script src="v098.js"></script>
+<script src="v099.js"></script>
+</body>
+</html>

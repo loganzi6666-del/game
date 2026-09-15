@@ -1,0 +1,26 @@
+LIFE : RISE V0.7 — 데이터 스냅샷 안내
+기준일: 2026-09-13
+
+국회 실명 명단 자동 동기화 우선순위
+1. 정치인 도감 · 제22대 국회 (299명 현직 데이터)
+   https://rumins01.github.io/dogam/
+   raw data: https://github.com/rumins01/dogam
+2. assemblykor — 국회 공개 API 기반 의원 데이터 fallback
+   https://github.com/kyusik-yang/assemblykor
+3. hardcoded real-member fallback (older snapshot)
+   https://github.com/justbuildpd-sudo/newsbot
+
+현재 직책 확인에 사용한 공개 출처
+- 대한민국 청와대: 대통령 이재명
+- 국무조정실/국무총리비서실: 제50대 국무총리 한성숙
+- 국회/최근 보도: 국회의장 조정식
+- 더불어민주당 공식 사이트: 당대표 김민석, 원내대표 한병도
+- 국민의힘 공식 사이트: 당대표 장동혁, 원내대표 정점식
+- 국가정보원 공식 사이트: 국정원장 이종석
+
+중요
+- 실제 이름/정당/지역구는 게임 시작 시점 현실 데이터를 사용합니다.
+- 2026-09-13 이후 발생하는 선거, 탈당, 합당, 계파, 관계, 표결, 스캔들, 권력변동은 게임 시뮬레이션입니다.
+- 게임의 의원별 충성도/야심/청렴/관계/계파 점수는 실제 인물 평가나 사실이 아닙니다.
+- 현실 인물에게 폭력/살상 선택지는 제공하지 않습니다.
+- BLACK DESK의 극단적 임무 대상은 모두 가상의 인물/조직입니다.

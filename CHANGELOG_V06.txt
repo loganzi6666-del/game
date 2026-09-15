@@ -1,0 +1,7 @@
+V0.6 LIVING POWER
+- 300-member parliament NPC system
+- individual MP persuasion and voting
+- legislative system
+- world diplomacy, trade, sanctions, alliances and crises
+- political rival / scandal / media / achievements
+- impeachment support integrated with MP-level simulation
