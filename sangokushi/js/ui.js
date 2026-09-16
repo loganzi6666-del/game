@@ -291,6 +291,7 @@ const UI = {
     UI.applyView();
   },
   focusProv(id) { UI.selProv = id; UI.resetView(); UI.renderAll(); },
+  focusGen(n) { const g = genByName(n); if (!g || !g.loc) return; UI.selProv = g.loc; UI.selGen = n; UI.resetView(); UI.renderAll(); },
   toggleLegend() {
     UI.legendOn = !UI.legendOn;
     const el = document.getElementById('legend');
@@ -458,6 +459,10 @@ const UI = {
         ${portraitSVG(g, 46)}<div style="min-width:0"><b>${g.name}</b> <span class="hz">${RANKS[g.rank].n}</span>
         <div class="hz">통${g.lead} 무${g.war} 지${g.int} 정${g.pol} 매${g.cha}</div>
         <div class="hz">${g.acted ? '<span class="warn">행동 완료</span>' : g.hurt ? '<span class="seal">부상 '+g.hurt+'개월</span>' : '대기'}</div></div></div>`;
+      if (!p || g.loc !== p.id) h += `<div class="frame" style="padding:5px;border-color:#8a6a2f">
+        <span class="warn">※ ${g.name}은 ${PROV_BY_ID[g.loc].name}에 있습니다.</span>
+        <div class="hz">내정·군사 명령은 그 장수가 있는 도시를 선택해야 내릴 수 있습니다.
+        <span class="btn sm" onclick="UI.focusProv('${g.loc}')">${PROV_BY_ID[g.loc].name}으로 이동</span></div></div>`;
       const cats = {civ:'內 政', mil:'軍 事', per:'人 事', plot:'計 略'};
       Object.keys(cats).forEach(c => {
         h += `<div class="grp">${cats[c]}</div>`;
