@@ -11,7 +11,48 @@ const UI = {
   boot() {
     const sv = document.getElementById('titlemap');
     sv.innerHTML = UI.mapStatic(true);
+    const tv = document.getElementById('titlever');
+    if (tv) tv.innerHTML = `<b>v${GAME_VER.n}</b> (${GAME_VER.d}) — ${GAME_VER.t}
+      <span style="opacity:.7"> · 업데이트는 터미널에서 <b>git pull</b> (또는 UPDATE.bat)</span>`;
     document.addEventListener('keydown', UI.onKey);
+    UI.checkUpdate();
+  },
+
+  /* ---------- 새 버전 확인 → 터미널 명령 안내 ---------- */
+  cmpVer(a, b) {
+    const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+    for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; }
+    return 0;
+  },
+  checkUpdate() {
+    try {
+      const url = 'https://raw.githubusercontent.com/loganzi6666-del/game/'
+        + GAME_VER.branch + '/sangokushi/js/version.js?t=' + Date.now();
+      fetch(url, {cache: 'no-store'}).then(r => r.ok ? r.text() : null).then(t => {
+        if (!t) return;
+        const mn = t.match(/n:\s*'([\d.]+)'/), md = t.match(/d:\s*'([^']+)'/), mt = t.match(/t:\s*'([^']*)'/);
+        if (!mn) return;
+        if (UI.cmpVer(mn[1], GAME_VER.n) > 0) UI.updateBanner(mn[1], md ? md[1] : '', mt ? mt[1] : '');
+      }).catch(() => {});
+    } catch (e) {}
+  },
+  updateBanner(ver, date, title) {
+    UI.newVer = {ver, date, title};
+    const cmd = 'git pull';
+    const box = document.createElement('div');
+    box.id = 'updbar';
+    box.innerHTML = `<b>새 버전 v${ver}</b> <span class="hz">${date}${title ? ' — ' + title : ''}</span>
+      <span style="opacity:.85">· 터미널에서</span>
+      <code onclick="UI.copyCmd('${cmd}')" title="클릭하면 복사">${cmd}</code>
+      <span style="opacity:.85">(윈도우는 UPDATE.bat)</span>
+      <span class="x" onclick="this.parentNode.remove()">✕</span>`;
+    document.body.appendChild(box);
+    if (document.getElementById('app').style.display !== 'none')
+      UI.toast(`새 버전 v${ver} — 터미널에서 <b>git pull</b> 하세요`);
+  },
+  copyCmd(c) {
+    try { navigator.clipboard.writeText(c); UI.toast('복사했습니다 — 터미널에 붙여넣으세요'); }
+    catch (e) { UI.toast('터미널에서 git pull 을 실행하세요'); }
   },
   showHelp() {
     UI.openModal('遊 書 — 유서', `
@@ -49,7 +90,20 @@ const UI = {
       <p>장수 354명의 이름·한자·능력은 각국 사서의 평가를 참고해 배치했고, 초상은 문화권별 관모·갑주
          (고구려 조우관, 신라 금관, 조선 갓과 두정갑, 일본 카부토와 남만구소쿠, 중국 통천관과 수면갑,
          베트남 칸동, 참파·크메르 보관, 명식 갑주, 대만 원주민 깃털 머리띠)를 절차적으로 생성합니다.</p>
-      <p class="hz">해상도 1280×760 이상 권장 · 저장은 브라우저 로컬에 보관됩니다.</p></div>`,
+      <p class="hz">해상도 1280×760 이상 권장 · 저장은 브라우저 로컬에 보관됩니다.</p>
+      <div class="frame" style="padding:8px;margin-top:10px;line-height:1.8">
+        <div class="gold">버전 v${GAME_VER.n} <span class="hz">(${GAME_VER.d})</span></div>
+        <div class="hz">${GAME_VER.t}</div>
+        <div style="margin-top:6px">업데이트는 <b>터미널</b>에서 받습니다.</div>
+        <div class="hz" style="font-family:monospace;background:#0006;padding:4px 6px;margin-top:3px">git pull</div>
+        <div class="hz" style="margin-top:4px">윈도우는 폴더의 <b>UPDATE.bat</b> 더블클릭,
+          Mac은 <b>./update.sh</b> — 자세한 내용은 <b>sangokushi/HOW_TO_UPDATE.md</b><br>
+          받은 뒤 브라우저에서 <b>Ctrl+F5</b>(Mac <b>Cmd+Shift+R</b>)로 강제 새로고침하세요.</div>
+        <div class="hz" style="margin-top:4px">브랜치 <span style="font-family:monospace">${GAME_VER.branch}</span></div>
+        <div style="margin-top:5px">${UI.newVer
+          ? `<span class="warn">새 버전 v${UI.newVer.ver} 가 나와 있습니다 — 터미널에서 git pull</span>`
+          : '<span class="jade">최신 버전입니다</span> <span class="hz">(확인 실패 시에도 이렇게 보입니다)</span>'}</div>
+      </div></div>`,
       [{n:'닫기', f:UI.closeModal}]);
   },
 
@@ -393,7 +447,7 @@ const UI = {
       <div class="btn sm" onclick="UI.chronWin()">정세</div>
       <div class="btn sm" onclick="UI.saveGame()">저장</div>
       <div class="btn sm" onclick="UI.toggleSfx()" title="효과음">${UI.sfxOn ? '♪' : '♪̸'}</div>
-      <div class="btn sm" onclick="UI.showHelp()">유서</div>
+      <div class="btn sm" onclick="UI.showHelp()" title="v${GAME_VER.n} (${GAME_VER.d})">유서</div>
       ${S.cheat && S.cheat.used ? '<div class="btn sm red" onclick="UI.cheatWin()" title="치트 사용 중">天機</div>' : ''}`;
   },
   renderProv() {

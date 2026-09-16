@@ -3,12 +3,34 @@
 삼국지 7·8 계열의 감각으로 만든 **동아시아판 땅따먹기 전략 시뮬레이션**.
 한반도 · 일본 · 중국 · 베트남 · 대만의 54개 주군(州郡)을 32개 세력이 다툰다.
 
-## 실행
+## 설치 · 실행 · 업데이트 (터미널)
 
+**처음 한 번만** — 터미널에서
+```bash
+git clone -b claude/east-asia-sangokushi https://github.com/loganzi6666-del/game.git GUNWOONG
+cd GUNWOONG
 ```
-sangokushi/index.html 을 브라우저로 열면 끝 (설치·서버 불필요)
+
+**실행** — `START_EASTASIA.bat` 더블클릭 (Windows) 또는 `sangokushi/index.html` 열기
+(설치·서버 불필요. Chrome / Edge 권장, 1280×760 이상)
+
+**업데이트** — 터미널에서 한 줄
+```bash
+git pull
 ```
-저장은 브라우저 localStorage에 보관된다. 권장 해상도 1280×760 이상.
+윈도우는 폴더의 **`UPDATE.bat`** 더블클릭, Mac/Linux는 **`./update.sh`**
+→ 현재 버전 표시 → 최신 버전 받기 → 바로 실행 여부 선택까지 한 번에 진행된다.
+받은 뒤에는 브라우저에서 **Ctrl+F5**(Mac `Cmd+Shift+R`)로 강제 새로고침.
+
+게임이 실행될 때 원격 버전을 확인해, 새 버전이 있으면 화면 아래에
+`git pull` 명령이 적힌 알림 바를 띄운다(클릭하면 복사). 현재 버전은 타이틀 화면과
+`사서(史書)` 창에 표시된다.
+
+- 자세한 안내: [HOW_TO_UPDATE.md](HOW_TO_UPDATE.md)
+- 변경 기록: [CHANGELOG.md](CHANGELOG.md)
+
+저장은 게임 파일이 아니라 **브라우저 localStorage**에 있으므로 `git pull`로 파일을
+갈아끼워도 진행 상황은 그대로 남는다. (단, 같은 브라우저·같은 경로에서 열어야 한다)
 
 ---
 
@@ -254,7 +276,13 @@ AI는 후방 병력을 전선으로 **이송**하고, 대국은 동시에 여러
 
 ## 파일 구조
 ```
+../START_EASTASIA.bat 실행 (Windows)
+../UPDATE.bat         터미널 업데이트 (Windows)
+../update.sh          터미널 업데이트 (Mac/Linux)
+HOW_TO_UPDATE.md      설치·업데이트 안내
+CHANGELOG.md          변경 기록
 index.html            진입점
+js/version.js         버전 정보 (원격 비교용)
 css/main.css          UI 스타일 (삼국지 7/8 풍)
 js/data_map.js        해안선·하천·54주군·가도
 js/data_generals.js   32세력 · 장수 354명
