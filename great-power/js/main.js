@@ -1,7 +1,7 @@
 /* ============================================================
    열강의 시대 1900 — 시작 / 진행
    ============================================================ */
-const GAME_VERSION = 'v1.3 · 2026-09-16';   // UPDATE.bat / update.sh 로 갱신
+const GAME_VERSION = 'v1.4 · 2026-09-16';   // UPDATE.bat / update.sh 로 갱신
 let PICK=null;
 
 function initStart(){

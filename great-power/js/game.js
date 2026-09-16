@@ -290,7 +290,9 @@ function maxNavy(n){
     ind += p.pop * (1 + p.dev*0.4) * (p.colonial?0.35:1);
   }
   if(!any) return 0;
-  return Math.max(2, Math.round(ind * 0.0013 * (n._m ? n._m.nav : 1)));
+  // 아무리 작은 나라라도 앞바다를 지킬 최소한의 함대(6척)는 꾸릴 수 있다.
+  // 그 이상은 산업력이 결정한다.
+  return Math.max(6, Math.round(ind * 0.0013 * (n._m ? n._m.nav : 1)));
 }
 
 function armyQuality(n){

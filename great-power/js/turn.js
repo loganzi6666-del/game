@@ -111,7 +111,12 @@ function attack(code, from, to, divs){
   const pf = G.provs[from], pt = G.provs[to];
   if(!pf||!pt) return {ok:false,msg:'잘못된 지역'};
   if(pf.ctrl!==code) return {ok:false,msg:'출발 지역을 지배하고 있지 않다'};
-  if(!neighbours(from).includes(to)) return {ok:false,msg:'인접하지 않은 지역이다'};
+  const adjacent = neighbours(from).includes(to);
+  let invasion=null;
+  if(!adjacent){
+    invasion = (typeof canInvade==='function') ? canInvade(code, from, to) : {ok:false,msg:'그곳까지 공격할 방법이 없다'};
+    if(!invasion.ok) return {ok:false, msg: invasion.msg || '그곳까지 공격할 방법이 없다'};
+  }
   const enemyOwner = pt.ctrl;
   const w = atWarWith(code, enemyOwner);
   if(!w) return {ok:false,msg:`${Jwa(G.nats[enemyOwner]?G.nats[enemyOwner].adj:'그 나라')} 전쟁 중이 아니다`};
@@ -119,12 +124,7 @@ function attack(code, from, to, divs){
   divs = Math.min(divs, avail);
   if(divs<1) return {ok:false,msg:'출발 지역에 병력이 없다'};
 
-  const naval = isSeaLink(from,to);
-  let landingZone=null;
-  if(naval){
-    landingZone = (typeof canLand==='function') ? canLand(code, from, to) : (n.navy>=4?'x':null);
-    if(!landingZone) return {ok:false,msg:'제해권이 없다 — 두 해안을 잇는 해역에 우세한 함대(3척 이상)가 있어야 상륙할 수 있다'};
-  }
+  const naval = !adjacent || isSeaLink(from,to);
 
   const en = G.nats[enemyOwner];
   const defDivs = (en && en.armies[to]) || 0;
@@ -137,7 +137,7 @@ function attack(code, from, to, divs){
   const sup = supplyAt(n, from) * (1+gb.sup);
 
   let attStr = divs * n._m.atk * (1+gb.atk) * (n._m.mor||1) * sup * (0.85+rnd()*0.3);
-  if(naval) attStr *= 0.72;
+  if(naval) attStr *= (invasion ? invasion.tier.mult : 0.72);
   let defStr = defDivs * (en?en._m.def:1) * (1+gd.def) * ter.def
              * (1 + pt.fort*0.18*(1+gb.fort)) * (0.85+rnd()*0.3);
   if(en && pt.cores.includes(enemyOwner)) defStr *= (en._m.homedef||1) * 1.12;

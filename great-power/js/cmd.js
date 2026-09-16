@@ -167,9 +167,13 @@ function runCommand(raw){
   if(has(T,'공격','침공','진격','점령','쳐라','밀어')){
     const target=findProvince(T,p=>p.ctrl!==G.player);
     if(!target) return say('공격 목표 지역을 찾지 못했다. 예) "알자스 공격"', false);
-    const from=Object.keys(me.armies).filter(id=>me.armies[id]>=1 && neighbours(id).includes(target))
+    let from=Object.keys(me.armies).filter(id=>me.armies[id]>=1 && neighbours(id).includes(target))
       .sort((a,b)=>me.armies[b]-me.armies[a])[0];
-    if(!from) return say(`${G.provs[target].name}에 인접한 우리 부대가 없다.`, false);
+    if(!from && G.provs[target].coast){          // 인접하지 않으면 해안 부대로 상륙을 시도
+      from=Object.keys(me.armies).filter(id=>me.armies[id]>=1 && G.provs[id].coast)
+        .sort((a,b)=>me.armies[b]-me.armies[a])[0];
+    }
+    if(!from) return say(`${G.provs[target].name}에 보낼 수 있는 부대가 없다 (인접 부대나 해안의 부대가 필요하다).`, false);
     const cnt=firstNum(T, me.armies[from]);
     const r=attack(G.player,from,target,Math.min(cnt,me.armies[from]));
     if(r.report){ showBattle(r.report); } else say(r.msg,false);
@@ -286,11 +290,17 @@ function showHelp(){
       <tr><th>동작</th><th>결과</th></tr>
       <tr><td>좌클릭</td><td>프로빈스 선택 / 부대 마커를 누르면 그 부대 선택</td></tr>
       <tr><td>좌클릭 드래그</td><td>상자 안의 내 부대·함대를 모두 선택 (Shift로 추가)</td></tr>
-      <tr><td>우클릭</td><td>선택한 부대에게 그곳으로 가라고 명령 (적지면 공격)</td></tr>
+      <tr><td>우클릭</td><td>선택한 부대에게 그곳으로 가라고 명령 (적지면 공격, 바다 건너도 자동 상륙)</td></tr>
       <tr><td>우클릭 드래그</td><td>지도 이동</td></tr>
       <tr><td>휠</td><td>확대 / 축소</td></tr>
       <tr><td>Ctrl+A / Esc</td><td>전군 선택 / 선택 해제</td></tr>
     </table>
+    <div style="margin-top:14px"><b style="color:var(--gold2)">바다 건너 공격</b></div>
+    <div class="tiny" style="margin-top:4px">
+      해역에 함대를 미리 배치할 필요 없다. 출발지와 목적지가 둘 다 바다에 면해 있고
+      <b>보유 해군 총량</b>이 거리·상대 해군에 따른 요구치를 넘으면, 육군을 선택해 목표를 우클릭하는 것만으로
+      그대로 상륙한다. 가까운 약소국은 함선 몇 척으로 충분하고, 해군 강국을 치려면 훨씬 많은 함대가 필요하다.
+    </div>
     <div class="tiny" style="margin-top:12px">
       지역 이름은 지도에 적힌 그대로 쓰면 된다(예: 화북, 우크라이나, 북인도).
       지역을 적지 않으면 <b>지도에서 선택한 지역</b>이 대상이 된다.

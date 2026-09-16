@@ -199,19 +199,40 @@ function isBlockaded(p){
   }
   return false;
 }
-/* 상륙에 필요한 제해권 — 두 지역을 모두 접한 해역에 우리 함대가 있어야 한다 */
-function canLand(code, from, to){
-  const za=zonesTouching(from), zb=zonesTouching(to);
+/* ============================================================
+   상륙 판정 — 단순화된 규칙
+   "두 지역이 모두 바다에 면해 있고, 그 거리를 건널 만큼 해군이 있는가"
+   해역별로 함대를 정확히 배치해 둘 필요가 없다. 거리가 멀수록,
+   상대 해군이 강할수록 더 많은 함선이 필요할 뿐이다.
+   ============================================================ */
+function seaDistance(from, to){
+  const a=provCentre(from), b=provCentre(to);
+  return Math.hypot(a[0]-b[0], a[1]-b[1]);
+}
+// 거리에 따라 매끄럽게 늘어난다 — 220 같은 문턱에서 요구치가 갑자기 튀지 않는다
+function invasionNeed(dist){ return Math.min(20, Math.max(3, Math.round(3 + dist/180))); }
+function invasionMult(dist){ return Math.max(0.45, Math.min(0.80, 0.80 - dist/3400)); }
+function invasionLabel(dist){
+  if(dist < 220)  return '근해 원정';
+  if(dist < 600)  return '원해 원정';
+  if(dist < 1300) return '대양 원정';
+  return '대원정';
+}
+function canInvade(code, from, to){
+  const pf=G.provs[from], pt=G.provs[to];
+  if(!pf || !pt) return {ok:false, msg:'잘못된 지역'};
+  if(!pf.coast || !pt.coast) return {ok:false, msg:'두 지역이 모두 바다에 면해야 상륙할 수 있다'};
+  const dist=seaDistance(from,to);
+  const need0=invasionNeed(dist), mult=invasionMult(dist), label=invasionLabel(dist);
   const n=G.nats[code];
-  for(const z of za){
-    if(!zb.includes(z)) continue;
-    const mine=(n.fleets||{})[z]||0;
-    if(mine<3) continue;
-    let enemy=0;
-    for(const [c,v] of fleetsIn(z)) if(atWarWith(code,c)) enemy+=v;
-    if(mine > enemy) return z;
-  }
-  return null;
+  const enemy=G.nats[pt.ctrl];
+  const enemyNavy = enemy ? (enemy.navy||0) : 0;
+  const need = Math.max(need0, enemyNavy>0 ? Math.ceil(enemyNavy*1.15) : 0);
+  const have = n.navy||0;
+  const tier = {need, mult, name:label};
+  if(have < need) return {ok:false, need, tier,
+    msg:`상륙에 필요한 해군이 부족하다 (보유 ${Math.round(have)}척 / 필요 ${need}척 — ${label}${enemyNavy>0?', 적 해군 '+Math.round(enemyNavy)+'척 고려':''})`};
+  return {ok:true, need, tier};
 }
 
 /* 장부 맞추기 — 보유 함선 수와 해역 배치가 어긋나지 않게 */

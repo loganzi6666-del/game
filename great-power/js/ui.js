@@ -541,16 +541,19 @@ function rightClickAt(e){
 
 function orderArmies(target){
   const me=G.nats[G.player];
+  const q=G.provs[target];
   let moved=0, marched=0, fought=0, lastReport=null, err=null;
   for(const from of [...UI.selArmies]){
     if(!(me.armies[from]>=1) || from===target) continue;
     const divs=me.armies[from];
-    if(neighbours(from).includes(target)){
-      const q=G.provs[target];
+    const adjacent=neighbours(from).includes(target);
+    // 붙어 있지 않아도, 두 지역이 바다에 면해 있고 전쟁 중이면 상륙을 시도한다
+    const overseas = !adjacent && q.coast && G.provs[from].coast && atWarWith(G.player,q.ctrl);
+    if(adjacent || overseas){
       let r;
-      if(q.ctrl!==G.player && atWarWith(G.player,q.ctrl)) { r=attack(G.player, from, target, divs); if(r.report){ lastReport=r.report; fought++; } }
-      else { r=moveArmy(G.player, from, target, divs); if(r.ok) moved++; }
-      if(r.ok===false) err=r.msg;
+      if(q.ctrl!==G.player && atWarWith(G.player,q.ctrl)) { r=attack(G.player, from, target, divs); if(r.report){ lastReport=r.report; fought++; } else if(r.ok===false) err=r.msg; }
+      else if(adjacent) { r=moveArmy(G.player, from, target, divs); if(r.ok) moved++; else err=r.msg; }
+      else { err='그 지역과는 전쟁 중이 아니다'; }
     } else {
       const r=setMarchOrder(G.player, from, target, divs);
       if(r.ok) marched++; else err=r.msg;
