@@ -220,6 +220,7 @@ function aiWarDecision(n){
     v -= (t.guaranteedBy||[]).length * 1.2;      // 열강의 보장은 억지력
     v += Math.min(2.0, (t.aggression||0)/25);    // 침략국은 모두의 표적
     v -= Math.min(2.5, n.exh/20) + Math.max(0, (60-n.stab)/25);
+    if(c===G.player && G.handicap) v -= G.handicap.shield;   // 약소국 보정
     const victimWars = warsOf(c).length;
     if(victimWars) v -= (G.difficulty==='hard'? 0.4 : 1.6) * victimWars;   // 남의 전쟁에 편승하는 것도 부담이다
     v *= (0.55 + n.ai.agg*0.9);

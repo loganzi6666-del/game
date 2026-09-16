@@ -200,6 +200,8 @@ table.t .num{text-align:right;font-variant-numeric:tabular-nums}
 #starthead{text-align:center;padding:22px 20px 12px}
 #starthead h1{font-size:34px;color:var(--gold2);letter-spacing:.06em}
 #starthead p{color:var(--dim);font-size:13px;margin-top:6px}
+#starthead .vertag{color:var(--dim2);font-size:11px;margin-top:8px;letter-spacing:.03em}
+#starthead .vertag b{color:var(--gold)}
 #startpick{
   position:absolute;right:20px;top:20px;bottom:20px;width:330px;background:#16222edd;
   border:1px solid var(--line2);border-radius:8px;padding:12px;overflow-y:auto;backdrop-filter:blur(6px);
@@ -218,3 +220,41 @@ select,input[type=number],input[type=range]{
   background:#0f1a24;border:1px solid var(--line2);color:var(--txt);border-radius:4px;padding:5px 7px;font:inherit;font-size:12px;
 }
 input[type=range]{padding:0}
+
+/* ---------- 치트 모드 ---------- */
+#cheatBadge{
+  margin-left:8px;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;
+  background:#4a2b5e;color:#e0b8ff;border:1px solid #7a4f9a;letter-spacing:.04em;
+}
+#cheatBadge.god{background:#5e2b2b;color:#ffc0c0;border-color:#9a4f4f;animation:godpulse 1.6s infinite}
+@keyframes godpulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+#cheatDock{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:150;
+  width:min(1120px, calc(100vw - 48px));max-height:52vh;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#221a2e,#171320);border:1px solid #7a4f9a;border-radius:9px;
+  box-shadow:0 18px 50px #000b;
+}
+#cheatDock .chHead{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #3c2b4e;
+  background:#2a1f39;border-radius:8px 8px 0 0;
+}
+#cheatDock .chHead b{color:#e0b8ff;font-size:14px;letter-spacing:.05em}
+#cheatDock .chX{margin-left:auto;color:#a98fc0;font-size:16px;padding:0 4px}
+#cheatDock .chX:hover{color:#fff}
+#cheatDock .chBody{overflow-y:auto;padding:10px 12px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+#cheatDock .chGrp{flex:1 1 200px;min-width:190px}
+#cheatDock .chGt{font-size:10px;color:#a98fc0;letter-spacing:.12em;margin-bottom:5px;
+  border-bottom:1px solid #3c2b4e;padding-bottom:3px}
+#cheatDock .chBtn{
+  display:block;width:100%;text-align:left;background:#2c2340;border:1px solid #453358;
+  border-radius:5px;padding:6px 9px;margin-bottom:5px;font-size:12px;color:#ded0ef;line-height:1.35;
+}
+#cheatDock .chBtn span{display:block;font-size:10.5px;color:#9b87b0;margin-top:1px}
+#cheatDock .chBtn:hover{background:#3a2d52;border-color:#8a5fb0}
+#cheatDock .chBtn:active{transform:translateY(1px)}
+#cheatDock .chFoot{padding:7px 14px;border-top:1px solid #3c2b4e;background:#1d1728;border-radius:0 0 8px 8px}
+#cheatDock .chFoot b{color:#e0b8ff}
+
+.lg1.cheat .lgt{color:#d8a8ff}
+#legend .lgsep{height:1px;background:var(--line);margin:6px 0}

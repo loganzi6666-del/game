@@ -107,28 +107,132 @@ const RAWMAP={}; MAP_RAW.forEach(r=>RAWMAP[r.id]=r);
 function rawPath(id){ return RAWMAP[id]?RAWMAP[id].d:''; }
 function provCentre(id){ return RAWMAP[id]?RAWMAP[id].c:[0,0]; }
 
+/* 지도 단위 ↔ 화면 픽셀. 오버레이는 확대해도 같은 크기로 보여야 한다. */
+function mapUnit(){
+  const r=$('#map').getBoundingClientRect();
+  return UI.view.w / Math.max(1, r.width);
+}
+
 function paintMarkers(){
   const g=$('#map #gMark'); g.innerHTML='';
   const zoom = MAP_VIEW.w/UI.view.w;
-  const showArmies = zoom>0.9 || UI.mode==='army';
-  if(showArmies){
-    const acc={};
-    for(const c in G.nats){ const n=G.nats[c];
-      for(const id in n.armies){ const v=n.armies[id]; if(v<0.5) continue;
-        if(!acc[id]) acc[id]=[]; acc[id].push([c,v]); } }
-    for(const id in acc){
+  const U = mapUnit();                 // 화면 1px = U 지도단위
+  const px = v => v*U;                 // 화면 px 를 지도단위로
+
+  /* ── 인프라 아이콘 ── */
+  if(zoom > 1.15){
+    const s = px(4.6);                       // 글리프 반지름 (화면 기준 고정)
+    const w = s*2.0;
+    for(const id in G.provs){
+      const p=G.provs[id];
+      const icons=[];
+      const factories = p.dev>=9?3 : p.dev>=6?2 : p.dev>=3?1 : 0;
+      for(let i=0;i<factories;i++) icons.push(['fac',null]);
+      if(p.fort>0) icons.push(['fort', p.fort]);
+      if(p.rail>0) icons.push(['rail', p.rail]);
+      const building = buildingsAt(id);
+      if(building) icons.push(['work', building]);
+      if(!icons.length) continue;
+
+      const total = icons.length*w;
+      // 아이콘 줄이 프로빈스 안에 들어갈 때만 그린다
+      const span = Math.sqrt(RAWMAP[id] ? RAWMAP[id].a : 0);
+      if(span < total*0.85 && id!==UI.sel) continue;
+
       const [cx,cy]=provCentre(id);
-      const list=acc[id].sort((a,b)=>b[1]-a[1]);
-      const [c,v]=list[0];
-      const r = Math.min(20, 6+Math.sqrt(v)*1.7);
-      g.appendChild(sv('circle',{cx,cy,r, fill:G.nats[c].color, stroke:'#0b1620','stroke-width':1.5, opacity:.92, class:'armydot'}));
-      const t=sv('text',{x:cx, y:cy+4, class:'armytag'}); t.textContent=Math.round(v); g.appendChild(t);
+      const y = cy + px(15);
+      g.appendChild(sv('rect',{x:cx-total/2-s*0.35, y:y-s*1.5, width:total+s*0.7, height:s*2.7,
+        rx:s*0.5, fill:'#0b1620', opacity:.5}));
+      let x = cx - total/2 + w/2;
+      for(const [kind,val] of icons){ drawInfra(g, kind, x, y, s, val); x+=w; }
     }
   }
-  if(zoom>1.7){
-    for(const c in G.nats){ const n=G.nats[c]; if(!n.alive) continue;
+
+  /* ── 완공 표시 (2개월간 금빛 고리) ── */
+  if(G.fx){
+    const stack={};                                  // 같은 지역에 여러 건이면 위로 쌓는다
+    for(const f of G.fx){
+      const age = G.turn - f.turn;
+      if(age > 2 || !RAWMAP[f.prov]) continue;
+      const [cx,cy]=provCentre(f.prov);
+      const r = px(16 + age*9);
+      g.appendChild(sv('circle',{cx,cy,r, fill:'none', stroke:'#e5c65a',
+        'stroke-width':2.2, 'vector-effect':'non-scaling-stroke', opacity: 0.9 - age*0.28}));
+      const k = stack[f.prov] = (stack[f.prov]||0) + 1;
+      const t=sv('text',{x:cx, y:cy-r-px(6+ (k-1)*13), class:'caplabel',
+        style:`font-size:${px(11)}px;stroke-width:${px(3)}px;fill:#ffe9a8`});
+      t.textContent=f.label; g.appendChild(t);
+    }
+  }
+
+  /* ── 병력 ── */
+  const acc={};
+  for(const c in G.nats){ const n=G.nats[c];
+    for(const id in n.armies){ const v=n.armies[id]; if(v<0.5) continue;
+      if(!acc[id]) acc[id]=[]; acc[id].push([c,v]); } }
+  for(const id in acc){
+    if(!RAWMAP[id]) continue;
+    const [cx,cy]=provCentre(id);
+    const list=acc[id].sort((a,b)=>b[1]-a[1]);
+    const [c,v]=list[0];
+    const mine = c===G.player;
+    const rpx = Math.max(7, Math.min(20, 7+Math.sqrt(v)*1.7));
+    const r = px(rpx);
+    const yy = cy - (zoom>1.15 ? px(5) : 0);
+    g.appendChild(sv('circle',{cx, cy:yy, r, fill:G.nats[c].color, stroke: mine?'#e5c65a':'#0b1620',
+      'stroke-width': mine?2.2:1.4, 'vector-effect':'non-scaling-stroke', opacity:.95, class:'armydot'}));
+    const t=sv('text',{x:cx, y:yy+px(rpx*0.36), class:'armytag',
+      style:`font-size:${px(Math.max(9,Math.min(13,rpx*0.9)))}px;stroke-width:${px(2.5)}px`});
+    t.textContent=Math.round(v); g.appendChild(t);
+    if(list.length>1){                       // 같은 칸에 적군도 있다 = 교전
+      const t2=sv('text',{x:cx+r+px(4), y:yy-r*0.4, class:'caplabel',
+        style:`font-size:${px(11)}px;fill:#ff9a9a;stroke-width:${px(3)}px`});
+      t2.textContent='⚔'; g.appendChild(t2);
+    }
+  }
+
+  /* ── 수도 ── */
+  if(zoom>1.5){
+    for(const c in G.nats){ const n=G.nats[c]; if(!n.alive || !RAWMAP[n.cap]) continue;
       const [cx,cy]=provCentre(n.cap);
-      const t=sv('text',{x:cx,y:cy-12,class:'caplabel'}); t.textContent='★ '+n.adj; g.appendChild(t); }
+      if(G.fx && G.fx.some(f=>f.prov===n.cap && G.turn-f.turn<=2)) continue;  // 완공 문구와 겹치지 않게
+      const t=sv('text',{x:cx, y:cy-px(15), class:'caplabel',
+        style:`font-size:${px(10.5)}px;stroke-width:${px(3)}px`});
+      t.textContent='★ '+n.adj; g.appendChild(t); }
+  }
+}
+
+function buildingsAt(provId){
+  for(const c in G.nats){
+    for(const b of G.nats[c].building) if(b.prov===provId) return BUILDINGS[b.type].n;
+  }
+  return null;
+}
+
+/* 작은 벡터 글리프 — 공장 / 요새 / 철도 / 공사중 */
+function drawInfra(g, kind, x, y, s, val){
+  const add=(t,a)=>{ g.appendChild(sv(t,a)); };
+  if(kind==='fac'){
+    add('rect',{x:x-s*0.8, y:y-s*0.35, width:s*1.6, height:s*1.05, fill:'#d98c33', stroke:'#2a1c08','stroke-width':.6,rx:.6});
+    add('rect',{x:x+s*0.15, y:y-s*1.05, width:s*0.42, height:s*0.75, fill:'#b06e20', stroke:'#2a1c08','stroke-width':.5});
+    add('circle',{cx:x+s*0.36, cy:y-s*1.35, r:s*0.26, fill:'#cfd8e0', opacity:.55});
+  } else if(kind==='fort'){
+    add('path',{d:`M${x-s*0.85} ${y+s*0.6} L${x-s*0.85} ${y-s*0.45} L${x-s*0.5} ${y-s*0.45} L${x-s*0.5} ${y-s*0.8}
+                  L${x-s*0.15} ${y-s*0.8} L${x-s*0.15} ${y-s*0.45} L${x+s*0.15} ${y-s*0.45} L${x+s*0.15} ${y-s*0.8}
+                  L${x+s*0.5} ${y-s*0.8} L${x+s*0.5} ${y-s*0.45} L${x+s*0.85} ${y-s*0.45} L${x+s*0.85} ${y+s*0.6} Z`,
+              fill:'#9aa7b4', stroke:'#1a2430','stroke-width':.6});
+    if(val>=3){ const t=sv('text',{x, y:y+s*0.5, class:'armytag',
+      style:`font-size:${s*1.15}px;stroke-width:2px`}); t.textContent=val; g.appendChild(t); }
+  } else if(kind==='rail'){
+    add('line',{x1:x-s*0.9,y1:y-s*0.2,x2:x+s*0.9,y2:y-s*0.2, stroke:'#8d99a5','stroke-width':s*0.22});
+    add('line',{x1:x-s*0.9,y1:y+s*0.3,x2:x+s*0.9,y2:y+s*0.3, stroke:'#8d99a5','stroke-width':s*0.22});
+    for(let i=-1;i<=1;i++) add('line',{x1:x+i*s*0.55,y1:y-s*0.45,x2:x+i*s*0.55,y2:y+s*0.55,
+      stroke:'#5d6a76','stroke-width':s*0.18});
+  } else if(kind==='work'){
+    add('circle',{cx:x, cy:y+s*0.1, r:s*0.95, fill:'#1b2734', stroke:'#e5c65a','stroke-width':.9});
+    add('path',{d:`M${x-s*0.45} ${y+s*0.55} L${x+s*0.1} ${y-s*0.2} M${x-s*0.05} ${y-s*0.55} L${x+s*0.55} ${y-s*0.05}`,
+      stroke:'#e5c65a','stroke-width':s*0.28,'stroke-linecap':'round',fill:'none'});
+    const ttl=sv('title'); ttl.textContent='공사 중: '+val; g.appendChild(ttl);
   }
 }
 
@@ -136,7 +240,7 @@ function renderLegend(){
   const L=$('#legend'); if(!L) return;
   const rows=[];
   if(UI.mode==='pol'||UI.mode==='ctrl'){
-    const tops=G.ranking.slice(0,8).filter(c=>G.nats[c].alive);
+    const tops=G.ranking.slice(0,6).filter(c=>G.nats[c].alive);
     for(const c of tops) rows.push([G.nats[c].color, G.nats[c].name]);
     if(UI.mode==='ctrl') rows.push(['repeating-linear-gradient(45deg,#000,#000 3px,transparent 3px,transparent 6px)','빗금 = 점령 중']);
   } else if(UI.mode==='dev'){ rows.push(['#1e2c38','개발도 1 (미개발)'],['#8a7a56','5'],['#ffd98a','10 (공업 중심지)']); }
@@ -144,7 +248,14 @@ function renderLegend(){
   else if(UI.mode==='army'){ rows.push(['#23384d','병력 없음'],['#6fd0ff','대군 주둔']); }
   else if(UI.mode==='rel'){ rows.push(['#e5c65a','우리 영토'],['#3f8f5f','동맹'],['#4f9e6f','우호'],['#9e4f4f','적대'],['#a8262c','교전 중']); }
   else if(UI.mode==='res'){ for(const k in RESCOL) if(k!=='-') rows.push([RESCOL[k], RESOURCE[k].n]); }
-  L.innerHTML = rows.map(([c,t])=>`<div class="lg"><i style="background:${c}"></i>${esc(t)}</div>`).join('');
+  let html = rows.map(([c,t])=>`<div class="lg"><i style="background:${c}"></i>${esc(t)}</div>`).join('');
+  html += `<div class="lgsep"></div>
+    <div class="lg"><i style="background:#d98c33"></i>공장 (개발도 3/6/9)</div>
+    <div class="lg"><i style="background:#9aa7b4"></i>요새</div>
+    <div class="lg"><i style="background:#8d99a5"></i>철도</div>
+    <div class="lg"><i style="background:#e5c65a"></i>공사 중 · 완공</div>
+    <div class="lg tiny" style="color:var(--dim2)">확대하면 시설이 보입니다</div>`;
+  L.innerHTML = html;
 }
 
 /* ---------- 팬 / 줌 ---------- */
@@ -268,6 +379,12 @@ function renderTop(){
   $('#sPres').textContent=fmt(n.pres);
   const ex=$('#sExh'); ex.textContent=fmt(n.exh); ex.className=n.exh>35?'down':'';
   $('#sRank').textContent=n.rank+'위';
+  let badge=$('#cheatBadge');
+  if(G.cheat && G.cheat.used){
+    if(!badge){ badge=el('span',{id:'cheatBadge'}); badge.textContent='치트'; $('#natgov').after(badge); }
+    badge.title = G.cheat.godMode? '무적 모드 작동 중' : '이 게임에는 치트가 사용되었다';
+    badge.classList.toggle('god', !!G.cheat.godMode);
+  } else if(badge) badge.remove();
 }
 
 /* ---------- 로그 ---------- */

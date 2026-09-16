@@ -187,7 +187,11 @@ function buildTick(n){
     if(b.left<=0){
       const p=G.provs[b.prov];
       if(p && p.own===n.code){ BUILDINGS[b.type].apply(p);
-        if(n.code===G.player) logEvent('공사 완료', `${p.name}: ${BUILDINGS[b.type].n} 완공`, 'build', n.code); }
+        if(n.code===G.player){
+          logEvent('공사 완료', `${p.name}: ${BUILDINGS[b.type].n} 완공`, 'build', n.code);
+          G.fx = (G.fx||[]).filter(f=>G.turn-f.turn<=2);
+          G.fx.push({prov:b.prov, turn:G.turn, label:BUILDINGS[b.type].n+' 완공'});
+        } }
       n.building.splice(i,1);
     }
   }
@@ -199,7 +203,11 @@ function buildTick(n){
       else {
         const dest = (G.provs[r.prov] && G.provs[r.prov].ctrl===n.code) ? r.prov : n.cap;
         n.armies[dest]=(n.armies[dest]||0)+r.count;
-        if(n.code===G.player) logEvent('신병 배치', `${G.provs[dest].name}에 ${r.count}개 사단 편성 완료`, 'build', n.code);
+        if(n.code===G.player){
+          logEvent('신병 배치', `${G.provs[dest].name}에 ${r.count}개 사단 편성 완료`, 'build', n.code);
+          G.fx = (G.fx||[]).filter(f=>G.turn-f.turn<=2);
+          G.fx.push({prov:dest, turn:G.turn, label:`${r.count}개 사단 편성`});
+        }
       }
       n.recruiting.splice(i,1);
     }

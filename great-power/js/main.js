@@ -1,6 +1,7 @@
 /* ============================================================
    열강의 시대 1900 — 시작 / 진행
    ============================================================ */
+const GAME_VERSION = 'v1.1 · 2026-09-16';   // UPDATE.bat / update.sh 로 갱신
 let PICK=null;
 
 function initStart(){
@@ -41,7 +42,15 @@ function initStart(){
     row.addEventListener('click',()=>selectNation(c));
     box.appendChild(row);
   }
+  const ver=$('#verTag'); if(ver) ver.textContent=GAME_VERSION;
   $('#startBtn').addEventListener('click',startGame);
+  // 저장된 게임이 있으면 이어하기 버튼
+  if(localStorage.getItem('gp1900')){
+    const b=el('button',{class:'btn',id:'contBtn'},'이어하기');
+    b.style.marginRight='8px';
+    b.addEventListener('click',loadGame);
+    $('#startBtn').before(b);
+  }
 }
 function selectNation(c){
   if(!NATIONS[c]) return;
@@ -60,6 +69,7 @@ function startGame(){
   if(!PICK) return;
   newGame(PICK, { endYear:+$('#optEnd').value, difficulty:$('#optDiff').value });
   applyDifficulty();
+  CHEAT.init();
   $('#start').style.display='none';
   $('#app').style.display='flex';
   buildMap($('#map'), true);
@@ -151,6 +161,8 @@ function loadGame(){
     const data=JSON.parse(raw);
     G=data.G;
     G.pending = G.pending || [];
+    G.cheat = G.cheat || {on:false, used:false, godMode:false};
+    G.handicap = G.handicap || {weak:0,res:1,tax:1,grw:1,def:1,shield:0};
     for(const c in G.nats) G.nats[c]._m=calcMods(G.nats[c]);
     if($('#start').style.display!=='none'){
       $('#start').style.display='none'; $('#app').style.display='flex';
@@ -185,9 +197,10 @@ function wireUI(){
   $('#cmdhelp').addEventListener('click',showHelp);
   $('#cmd').addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
   window.addEventListener('keydown',e=>{
+    if(e.key==='F4'){ e.preventDefault(); toggleCheat(); return; }   // 어디서든 동작
     if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
     if(e.key===' '){ e.preventDefault(); doNextTurn(); }
-    if(e.key==='Escape'){ closeModals(); UI.order=null; paintMap(); }
+    if(e.key==='Escape'){ closeModals(); if(CHEAT.open) closeCheat(); UI.order=null; paintMap(); }
     const keys={'1':'pol','2':'ctrl','3':'dev','4':'unrest','5':'army','6':'rel','7':'res'};
     if(keys[e.key]){ UI.mode=keys[e.key];
       document.querySelectorAll('.mapmode').forEach(x=>x.classList.toggle('on',x.dataset.mode===UI.mode));

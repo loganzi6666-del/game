@@ -86,12 +86,32 @@ function newGame(playerCode, opts){
 
   // 초기 외교 관계 (1900년 실제 정세)
   setupDiplomacy();
+  recalcScores();
+  computeHandicap();
   for(const c in G.nats){ const n=G.nats[c]; n._m=calcMods(n);
     n.manpower = freeManpower(n); n.income = nationIncome(n); n.expense = nationExpense(n);
     n.rp = researchPoints(n); n.maxMan = maxManpower(n); }
   recalcScores();
   logEvent('국가 수립', `${G.nats[playerCode].name}의 20세기가 시작된다.`, 'start');
   return G;
+}
+
+/* ── 약소국 보정 ──────────────────────────────
+   시작 시점의 서열이 낮을수록 플레이어에게만 붙는 완만한 보정.
+   열강(1~8위)에게는 아무것도 주지 않는다. */
+function computeHandicap(){
+  const me = G.nats[G.player];
+  const weak = Math.max(0, Math.min(1, ((me.rank||1) - 8) / 26));
+  G.handicap = {
+    weak,
+    res : 1 + weak*0.55,      // 배움이 빠르다 — 따라잡을 길
+    tax : 1 + weak*0.32,      // 재정이 조금 덜 새어나간다
+    grw : 1 + weak*0.60,      // 개발이 빨리 자란다
+    def : 1 + weak*0.25,      // 본토 방어에 이점
+    shield: weak*1.7,         // 열강이 덜 달려든다
+  };
+  me.gold += Math.round(weak*55);
+  me.pp   += Math.round(weak*25);
 }
 
 function isColonial(id, own){
@@ -145,6 +165,13 @@ function calcMods(n){
     }
   }
   if(TRAITS[n.code]) TRAITS[n.code](m);
+  if(G && G.handicap && n.code===G.player){
+    const H=G.handicap;
+    m.res*=H.res; m.tax*=H.tax; m.grw*=H.grw; m.def*=H.def;
+  }
+  if(G && G.cheat && n.code===G.player && G.cheat.godMode){
+    m.atk*=3; m.def*=3; m.ind*=3; m.res*=3; m.tax*=3;
+  }
   const adm = ADMIN[n.code]||0.7;
   m.adm = adm;
   m.tax *= adm; m.res *= Math.sqrt(adm);   // 교육은 재정보다 천천히 무너진다

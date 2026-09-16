@@ -70,6 +70,10 @@ function runCommand(raw){
   const me=G.nats[G.player];
   const say=(m,ok)=>toast(m, ok!==false);
 
+  /* --- 치트 --- */
+  if(has(T,'치트','cheat')){ toggleCheat(); return; }
+  if(tryCheatCommand(T, raw)) return;
+
   /* --- 도움말 --- */
   if(has(T,'도움','명령어','헬프','help','?')){ showHelp(); return; }
 
@@ -275,6 +279,7 @@ function showHelp(){
       <tr><td>정치</td><td>입헌군주제로 변혁 / 공화정 전환 / 세율 110</td></tr>
       <tr><td>재정</td><td>국채 200 / 부채 상환</td></tr>
       <tr><td>진행</td><td>다음 달 / 턴 / 저장 / 불러오기</td></tr>
+      <tr><td>치트</td><td><b>F4</b> 또는 "치트" — 켜면 돈 5000 · 기술 전부 · 병력 30 · 즉시 승리 등이 먹힌다</td></tr>
     </table>
     <div class="tiny" style="margin-top:12px">
       지역 이름은 지도에 적힌 그대로 쓰면 된다(예: 화북, 우크라이나, 북인도).
