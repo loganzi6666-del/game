@@ -102,13 +102,30 @@ function runCommand(raw){
     refreshAll(); return;
   }
 
-  /* --- 강화 --- */
-  if(has(T,'강화','평화','종전','휴전 제안','항복')){
+  /* --- 강화 / 병합 / 속국화 --- */
+  if(has(T,'강화','평화','종전','휴전 제안','항복','병합','합병','속국','할양','배상금')){
     const wars=warsOf(G.player);
     if(!wars.length) return say('전쟁 중이 아니다.', false);
     const c=findNation(T);
     const w = c? wars.find(x=>x.att.includes(c)||x.def.includes(c)) : wars[0];
     if(!w) return say('그 나라와 전쟁 중이 아니다.', false);
+    // 구체적인 조건을 찍었으면 바로 시도한다
+    let want=null;
+    if(has(T,'병합','합병')) want='annex';
+    else if(has(T,'속국')) want='vassal';
+    else if(has(T,'배상금')) want='indem';
+    else if(has(T,'할양')) want = has(T,'4')?'take4' : has(T,'2')?'take2' : 'take1';
+    if(want){
+      const mine=sideOf(w,G.player);
+      const t=peaceTerms(w,mine).find(x=>x.id===want);
+      if(!t.ok) return say(`${t.n} 불가 — ${t.lock}`, false);
+      const enemyLead=G.nats[mine==='att'?w.leadD:w.leadA];
+      const sc = mine==='att'? w.score : -w.score;
+      if(!(sc >= t.effNeed+12 || enemyLead.exh > 40 || t.full))
+        return say(`${enemyLead.adj}이(가) 아직 그 조건을 받아들이지 않는다. 더 밀어붙여라 (점수 ${Math.round(sc)} / ${t.effNeed+12} 필요, 또는 전 국토 점령)`, false);
+      const desc=makePeace(w, mine, want);
+      say(`강화 성립 — ${desc}`, true); refreshAll(); return;
+    }
     showPeaceModal(w.id); return;
   }
 
@@ -276,7 +293,7 @@ function showHelp(){
       <tr><td>전투</td><td>만주 공격 / 알자스 침공 10개 사단</td></tr>
       <tr><td>이동</td><td>화북에서 만주로 이동 / 부대를 우크라이나로 보내</td></tr>
       <tr><td>외교</td><td>프랑스와 동맹 / 영국 관계 개선 / 일본 규탄 / 시암 독립 보장</td></tr>
-      <tr><td>강화</td><td>러시아와 강화 / 종전</td></tr>
+      <tr><td>강화</td><td>러시아와 강화 / 종전 / <b>시암 병합</b> / <b>시암 속국화</b> / 영토 할양</td></tr>
       <tr><td>건설</td><td>공장 건설 / 화북에 요새 건설 / 철도 부설 3</td></tr>
       <tr><td>군비</td><td>5개 사단 모병 / 군함 3척 건조</td></tr>
       <tr><td>연구</td><td>드레드노트 연구 / 산업 연구 / 군사 기술</td></tr>

@@ -239,18 +239,46 @@ function updateWarScore(w){
 /* ---------- 강화 ---------- */
 function peaceTerms(w, side){
   const score = side==='att' ? w.score : -w.score;
-  const terms = [];
-  terms.push({id:'white', n:'백지 강화', need:-100, d:'아무것도 얻지 않고 전쟁을 끝낸다.'});
-  if(score >= 15) terms.push({id:'indem', n:'배상금', need:15, d:'적의 국고에서 배상금을 받는다.'});
-  if(score >= 25) terms.push({id:'take1', n:'영토 1곳 할양', need:25, d:'점령한 지역 1곳을 병합한다.'});
-  if(score >= 45) terms.push({id:'take2', n:'영토 2곳 할양', need:45, d:'점령한 지역 2곳을 병합한다.'});
-  if(score >= 65) terms.push({id:'take4', n:'영토 4곳 할양', need:65, d:'점령한 지역 4곳을 병합한다.'});
-  if(score >= 80) terms.push({id:'vassal', n:'속국화', need:80, d:'상대국을 속국으로 삼는다.'});
-  const loserProvs = (side==='att'? w.def : w.att).reduce((s,c)=>s+ownedProvs(c).length,0);
+  const losers = side==='att' ? w.def : w.att;
+  const loserProvs = losers.reduce((s,c)=>s+ownedProvs(c).length,0);
   const months = (G.year-w.start.y)*12 + (G.month-w.start.m);
-  if(score >= 95 && loserProvs <= 4 && months >= 10)
-    terms.push({id:'annex', n:'전면 병합', need:95, d:'상대국을 완전히 병합한다. 전 세계가 경악할 것이다.'});
-  return terms;
+  // 점령 중인 적 영토 수 — 할양 조건 판단에 쓴다
+  let occupied = 0;
+  for(const id in G.provs){ const p=G.provs[id];
+    if(losers.includes(p.own) && (side==='att'?w.att:w.def).includes(p.ctrl)) occupied++; }
+
+  const all = [
+    {id:'white', n:'백지 강화', need:-100, d:'아무것도 얻지 않고 전쟁을 끝낸다.'},
+    {id:'indem', n:'배상금',   need:15,  d:'적의 국고에서 배상금을 받는다.'},
+    {id:'take1', n:'영토 1곳 할양', need:25, take:1, d:'점령한 지역 1곳을 병합한다.'},
+    {id:'take2', n:'영토 2곳 할양', need:45, take:2, d:'점령한 지역 2곳을 병합한다.'},
+    {id:'take4', n:'영토 4곳 할양', need:65, take:4, d:'점령한 지역 4곳을 병합한다.'},
+    {id:'vassal', n:'속국화',   need:80,  d:'상대국을 속국으로 삼는다. 영토는 그대로 두되 조공을 받는다.'},
+    {id:'annex', n:'전면 병합', need:95,  d:'상대국을 완전히 병합한다. 전 세계가 경악할 것이다.'},
+  ];
+  // 상대의 전 국토를 군사적으로 장악했다면, 점수와 별개로 굴복시킬 수 있다.
+  // (소국은 전 국토를 점령해도 전쟁 점수가 95까지 오르지 않아 병합이 불가능했다)
+  const fullyOccupied = loserProvs>0 && occupied >= loserProvs;
+
+  for(const t of all){
+    // 전 국토를 점령했다면 굴복 문턱이 낮아진다
+    t.full = fullyOccupied;
+    t.effNeed = t.need;
+    if(fullyOccupied){
+      if(t.id==='vassal') t.effNeed = Math.min(t.need, 55);
+      if(t.id==='annex')  t.effNeed = Math.min(t.need, 60);
+    }
+    t.ok = score >= t.effNeed;
+    if(!t.ok) t.lock = `전쟁 점수 ${t.effNeed} 필요 (현재 ${Math.round(score)})`;
+    if(t.ok && t.take && occupied < 1){ t.ok=false; t.lock='먼저 적 영토를 점령해야 한다'; }
+    if(t.id==='annex' && t.ok){
+      const needMonths = loserProvs<=2 ? 6 : 12;
+      if(!fullyOccupied){ t.ok=false; t.lock='상대의 모든 영토를 점령해야 병합할 수 있다'; }
+      else if(loserProvs > 4){ t.ok=false; t.lock=`상대 영토가 4곳 이하여야 한다 (현재 ${loserProvs}곳)`; }
+      else if(months < needMonths){ t.ok=false; t.lock=`개전 후 ${needMonths}개월이 지나야 한다 (현재 ${months}개월)`; }
+    }
+  }
+  return all;
 }
 
 function makePeace(w, winnerSide, termId, chosenProvs){
@@ -274,9 +302,14 @@ function makePeace(w, winnerSide, termId, chosenProvs){
       occ.sort((x,y)=>provValue(y)-provValue(x));
       list = occ.slice(0,cnt).map(p=>p.id);
     }
-    for(const id of list) transferProvince(id, W.code);
-    desc = `${list.map(i=>G.provs[i].name).join(', ')} 할양`;
-    W.pres += 2*list.length; L.pres -= 3*list.length;
+    // 점령한 땅이 없으면 가져갈 것도 없다 — 그래도 전쟁은 여기서 끝난다
+    if(list.length){
+      for(const id of list) transferProvince(id, W.code);
+      desc = `${list.map(i=>G.provs[i].name).join(', ')} 할양`;
+      W.pres += 2*list.length; L.pres -= 3*list.length;
+    } else {
+      desc = '점령지가 없어 영토 없이 종전';
+    }
   } else if(termId==='vassal'){
     L.vassalOf = W.code; W.vassals.push(L.code);
     desc = `${L.name} 속국화`; W.pres += 12; L.pres -= 15;

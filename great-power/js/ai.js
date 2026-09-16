@@ -257,11 +257,20 @@ function aiPeaceCheck(w){
   };
   const d = decide('att') || decide('def');
   if(!d) return;
+
   const winner = d.side;
   const winLead = winner==='att'? attLead : defLead;
   const score = winner==='att'? w.score : -w.score;
-  const terms = peaceTerms(w, winner);
-  const term = terms[terms.length-1];
+  const avail = peaceTerms(w, winner).filter(t=>t.ok);
+  if(!avail.length) return;
+
+  // 원칙은 '얻을 수 있는 가장 높은 조건'.
+  // 다만 나라를 통째로 지우는 것은 외교적으로 값비싸니,
+  // 이미 침략국으로 찍혔거나 온건한 성향이면 한 단계 낮춰 속국화 등으로 만족한다.
+  let term = avail[avail.length-1];
+  if(term.id==='annex' && !(winLead.ai.agg > 0.5 && (winLead.aggression||0) < 40)){
+    term = avail.filter(t=>t.id!=='annex').pop() || term;
+  }
 
   if(playerIn){
     const loserIsPlayer = (winner==='att' ? w.def : w.att).includes(G.player);
@@ -277,3 +286,4 @@ function aiPeaceCheck(w){
     makePeace(w, winner, term.id);
   }
 }
+

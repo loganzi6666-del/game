@@ -298,3 +298,23 @@ input[type=range]{padding:0}
 #selbar .hint b{color:var(--gold2)}
 #map.dragging{cursor:grabbing}
 #map{cursor:default}
+
+
+/* ---------- 지도 위 전쟁 패널 ---------- */
+#warbar{
+  position:absolute;right:12px;top:12px;z-index:14;display:none;flex-direction:column;gap:7px;
+  width:210px;
+}
+#warbar .wcard{
+  background:#0f1a24ee;border:1px solid var(--bad);border-radius:7px;padding:8px 10px;
+  box-shadow:0 6px 20px #0009;backdrop-filter:blur(4px);
+}
+#warbar .wtop{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:5px}
+#warbar .wtop b{color:#ffb8b8}
+#warbar .wtop .up{color:var(--good);font-variant-numeric:tabular-nums;font-weight:700}
+#warbar .wtop .down{color:var(--bad);font-variant-numeric:tabular-nums;font-weight:700}
+#warbar .wbar{height:5px;background:#0e1822;border-radius:3px;overflow:hidden;margin-bottom:5px}
+#warbar .wbar i{display:block;height:100%;border-radius:3px}
+#warbar .wnow{font-size:10.5px;color:var(--dim);margin-bottom:6px;line-height:1.35}
+#warbar .wnow b{color:var(--gold2)}
+#warbar button{width:100%}

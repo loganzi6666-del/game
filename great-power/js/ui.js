@@ -88,9 +88,16 @@ function paintMap(){
 }
 function paintOverlays(){
   const g=$('#map #gOver'); g.innerHTML='';
-  if(UI.mode==='ctrl'){
+  if(UI.mode==='ctrl' || UI.mode==='pol'){
     for(const id in G.provs){ const p=G.provs[id];
-      if(p.own!==p.ctrl) g.appendChild(sv('path',{d:rawPath(id), fill:'url(#occ)', stroke:'none'})); }
+      if(p.own===p.ctrl) continue;
+      g.appendChild(sv('path',{d:rawPath(id), fill:'url(#occ)', stroke:'none'}));
+      // 정치 지도에서는 누가 점령 중인지 테두리 색으로 알린다
+      if(UI.mode==='pol' && G.nats[p.ctrl]){
+        g.appendChild(sv('path',{d:rawPath(id), fill:'none', stroke:G.nats[p.ctrl].color,
+          'stroke-width':2.4, 'stroke-dasharray':'5 4', 'vector-effect':'non-scaling-stroke', opacity:.95}));
+      }
+    }
   }
   // 이동/공격 가능 표시
   if(UI.order && UI.order.from){
@@ -321,7 +328,7 @@ function renderLegend(){
   if(UI.mode==='pol'||UI.mode==='ctrl'){
     const tops=G.ranking.slice(0,6).filter(c=>G.nats[c].alive);
     for(const c of tops) rows.push([G.nats[c].color, G.nats[c].name]);
-    if(UI.mode==='ctrl') rows.push(['repeating-linear-gradient(45deg,#000,#000 3px,transparent 3px,transparent 6px)','빗금 = 점령 중']);
+    rows.push(['repeating-linear-gradient(45deg,#000,#000 3px,transparent 3px,transparent 6px)','빗금 = 점령 중 (소유권은 아직 적국)']);
   } else if(UI.mode==='dev'){ rows.push(['#1e2c38','개발도 1 (미개발)'],['#8a7a56','5'],['#ffd98a','10 (공업 중심지)']); }
   else if(UI.mode==='unrest'){ rows.push(['#1b3325','평온'],['#8a3a30','동요'],['#d13b3b','봉기 직전']); }
   else if(UI.mode==='army'){ rows.push(['#23384d','병력 없음'],['#6fd0ff','대군 주둔']); }
@@ -825,6 +832,15 @@ function panelProv(){
   let h=`<div class="sec"><h3>${esc(p.name)}</h3>
     <div class="row"><span class="k">소유</span><span class="v"><i class="dotc" style="background:${own?own.color:'#555'}"></i>${own?esc(own.name):'무주지'}</span></div>`;
   if(p.own!==p.ctrl) h+=`<div class="row"><span class="k">실효 지배</span><span class="v down">${ctl?esc(ctl.name):'—'}</span></div>`;
+  if(p.own!==p.ctrl && p.ctrl===G.player){
+    const w=atWarWith(G.player, p.own);
+    h+=`<div class="card" style="border-color:var(--gold);margin-top:8px">
+      <h4>점령 중 — 아직 우리 땅이 아니다</h4>
+      <div class="tiny">군사적으로 지배하고 있을 뿐, 소유권은 ${own?esc(own.name):'상대국'}에 있다.
+      <b style="color:var(--gold2)">강화 조약</b>을 맺어야 영토로 편입된다.</div>
+      ${w?`<div class="btnrow"><button class="btn sm gold" data-act="peace" data-war="${w.id}">강화 협상 열기</button></div>`:''}
+    </div>`;
+  }
   h+=`<div class="row"><span class="k">인구</span><span class="v">${fmt(p.pop)}만</span></div>
     <div class="row"><span class="k">개발도</span><span class="v">${p.dev} / 10</span></div>${bar(p.dev,10,'#d98c33')}
     <div class="row" style="margin-top:6px"><span class="k">요새</span><span class="v">${p.fort} / 5</span></div>
@@ -1317,18 +1333,20 @@ function showPeaceModal(warId){
     <div class="ms">전쟁 점수 ${sc>=0?'+':''}${fmt(sc)} · 개전 ${w.start.y}년 · 전투 ${w.battles}회</div></div>
     <div class="mb"><div class="tiny">전쟁 점수가 높을수록 더 많은 것을 요구할 수 있다. 상대가 받아들일지는 그들의 피로도에 달렸다.</div></div><div class="mc">`;
   for(const t of terms){
-    const ok = sc >= t.need;
-    h+=`<button class="choice" ${ok?'':'disabled style="opacity:.4"'} data-term="${t.id}">
-      <b>${t.n} <span style="float:right;color:var(--gold2);font-weight:400">${t.need>-100?'필요 점수 '+t.need:''}</span></b>
-      <span>${esc(t.d)}</span></button>`;
+    h+=`<button class="choice" ${t.ok?'':'disabled style="opacity:.45"'} data-term="${t.id}">
+      <b>${t.n} <span style="float:right;color:${t.ok?'var(--gold2)':'#8fa3b5'};font-weight:400">${t.effNeed>-100?'필요 점수 '+t.effNeed+(t.effNeed<t.need?' (전 국토 점령)':''):''}</span></b>
+      <span>${esc(t.d)}</span>
+      ${t.ok?'':`<span style="color:#e0a05a;display:block;margin-top:3px">🔒 ${esc(t.lock||'')}</span>`}</button>`;
   }
   h+=`<button class="btn" style="width:100%;margin-top:6px" onclick="closeModals()">협상을 미룬다</button></div>`;
   const ovl=modal(h);
   ovl.querySelectorAll('[data-term]').forEach(b=>b.addEventListener('click',()=>{
     const term=b.dataset.term;
     const enemyLead=G.nats[mine==='att'?w.leadD:w.leadA];
-    const need=terms.find(t=>t.id===term).need;
-    const willing = sc >= need + 12 || enemyLead.exh > 40 || term==='white';
+    const chosen=terms.find(t=>t.id===term);
+    if(!chosen.ok){ toast(chosen.lock||'아직 요구할 수 없는 조건이다', false); return; }
+    // 전 국토를 잃은 쪽은 버틸 여지가 없다
+    const willing = sc >= chosen.effNeed + 12 || enemyLead.exh > 40 || chosen.full || term==='white';
     closeModals();
     if(!willing){ toast(`${enemyLead.adj}이(가) 그 조건을 거부했다. 더 밀어붙여야 한다.`, false); refreshAll(); return; }
     const desc=makePeace(w, mine, term);
@@ -1403,7 +1421,32 @@ function showEnding(){
 function refreshAll(){
   recalcScores();
   G.nats[G.player]._m = calcMods(G.nats[G.player]);
-  renderTop(); paintMap(); renderPanel(); renderLog(); renderBadges(); renderSelBar();
+  renderTop(); paintMap(); renderPanel(); renderLog(); renderBadges(); renderSelBar(); renderWarBar();
+}
+
+/* 지도 위 전쟁 현황 — 강화 협상으로 바로 들어가는 문 */
+function renderWarBar(){
+  const bar=$('#warbar'); if(!bar) return;
+  const wars=warsOf(G.player);
+  if(!wars.length){ bar.style.display='none'; return; }
+  let h='';
+  for(const w of wars){
+    const mine=sideOf(w,G.player);
+    const sc = mine==='att'? w.score : -w.score;
+    const foes=(mine==='att'?w.def:w.att).map(c=>G.nats[c].adj).join(', ');
+    const terms=peaceTerms(w, mine).filter(t=>t.ok && t.id!=='white');
+    const best=terms[terms.length-1];
+    const pct=Math.max(0,Math.min(100,(sc+100)/2));
+    h+=`<div class="wcard">
+      <div class="wtop"><b>⚔ ${esc(foes)}</b><span class="${sc>=0?'up':'down'}">${sc>=0?'+':''}${Math.round(sc)}</span></div>
+      <div class="wbar"><i style="width:${pct}%;background:${sc>=0?'#5fb87a':'#d15c5c'}"></i></div>
+      <div class="wnow">${best? '지금 요구 가능: <b>'+best.n+'</b>' : '아직 요구할 수 있는 것이 없다'}</div>
+      <button class="btn sm ${best?'gold':''}" data-warpeace="${w.id}">강화 협상</button>
+    </div>`;
+  }
+  bar.innerHTML=h; bar.style.display='flex';
+  bar.querySelectorAll('[data-warpeace]').forEach(b=>
+    b.addEventListener('click',()=>showPeaceModal(+b.dataset.warpeace)));
 }
 
 /* 선택한 부대 요약 바 */
