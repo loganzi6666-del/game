@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>東亞 群雄割據 — 동아시아 군웅할거</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- ===== 타이틀 ===== -->
+<div id="title">
+  <svg class="bgmap" id="titlemap" viewBox="0 0 1560 1220" preserveAspectRatio="xMidYMid slice"></svg>
+  <div class="sealmark">群雄<br>割據</div>
+  <h1>群雄割據</h1>
+  <h2>동 아 시 아</h2>
+  <div class="sub">韓 · 日 · 中 · 越 · 臺 — 五方의 英雄이 天下를 다툰다</div>
+  <div class="menu">
+    <div class="btn" onclick="UI.openSetup()">새 로 운 난 세</div>
+    <div class="btn" onclick="UI.loadGame()">이 어 하 기</div>
+    <div class="btn" onclick="UI.showHelp()">유 서 (遊 書)</div>
+    <div class="btn" onclick="UI.showCredit()">사 서 (史 書)</div>
+  </div>
+</div>
+
+<!-- ===== 세력/인물 선택 ===== -->
+<div id="setup">
+  <div class="head">
+    <h3>群雄割據</h3>
+    <div class="hz">섬길 나라와 인물을 고르시오 — 고른 인물의 신분이 곧 당신의 유형이 됩니다</div>
+    <div class="sp"></div>
+    <div class="btn sm" onclick="UI.closeSetup()">돌아가기</div>
+  </div>
+  <div class="body">
+    <div class="left frame">
+      <div class="ttl">勢 力</div>
+      <div class="tabs" id="regtabs"></div>
+      <div class="flist sc" id="flist" style="flex:1"></div>
+    </div>
+    <div class="mid frame">
+      <div class="ttl" id="pttl">人 物</div>
+      <div class="pgrid sc" id="pgrid" style="flex:1"></div>
+    </div>
+    <div class="right frame">
+      <div class="ttl">選 擇</div>
+      <div class="sc" id="pinfo" style="flex:1"></div>
+      <div style="padding:8px;border-top:1px solid var(--gold3)">
+        <div class="btn" id="startbtn" onclick="UI.beginGame()" style="padding:11px;letter-spacing:6px">出 陣</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 메인 ===== -->
+<div id="app" style="display:none">
+  <div id="top">
+    <div class="date" id="tdate">190년 1월</div>
+    <div class="me" id="tme"></div>
+    <div class="stat" id="tstat"></div>
+    <div class="sp"></div>
+    <div class="row" id="ttools"></div>
+  </div>
+  <div id="main">
+    <div id="lpanel">
+      <div class="ttl">州 郡 <span class="hz" id="lprov"></span></div>
+      <div class="sc" id="pvbox" style="flex:1"></div>
+    </div>
+    <div id="center">
+      <svg id="map" viewBox="0 0 1560 1220"></svg>
+      <div id="mapctl">
+        <div class="btn" onclick="UI.zoom(1.25)">＋</div>
+        <div class="btn" onclick="UI.zoom(0.8)">－</div>
+        <div class="btn" onclick="UI.resetView()">◎</div>
+        <div class="btn" onclick="UI.toggleLegend()">旗</div>
+      </div>
+      <div id="minfo"></div>
+      <div id="legend"></div>
+    </div>
+    <div id="rpanel">
+      <div class="ttl">命 令</div>
+      <div class="sc cmds" id="cmdbox" style="flex:1"></div>
+    </div>
+  </div>
+  <div id="bottom">
+    <div id="logbox" class="sc"></div>
+    <div id="clock">
+      <div class="btn" id="endturn" onclick="UI.endTurn()" style="width:128px;padding:10px;letter-spacing:4px">턴 종 료</div>
+      <div class="hz" id="actleft"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 모달 / 전투 / 토스트 ===== -->
+<div id="modal"><div class="win" id="win"><div class="ttl" id="wtitle"><span></span><span class="close" onclick="UI.closeModal()">✕</span></div><div class="body sc" id="wbody"></div><div class="foot" id="wfoot"></div></div></div>
+<div id="battle">
+  <div class="bhead" id="bhead"></div>
+  <div class="bfield">
+    <div class="bside"><div class="hd" id="bahd"></div><div class="bunits sc" id="bau"></div></div>
+    <div class="bmid">
+      <div class="blog sc" id="blog"></div>
+      <div class="frame" style="padding:6px">
+        <div class="hz" style="text-align:center;margin-bottom:4px" id="btacttl">전술을 고르시오</div>
+        <div class="btacs" id="btacs"></div>
+      </div>
+    </div>
+    <div class="bside"><div class="hd" id="bdhd"></div><div class="bunits sc" id="bdu"></div></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="js/data_map.js"></script>
+<script src="js/data_generals.js"></script>
+<script src="js/data_tech.js"></script>
+<script src="js/portrait.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/roleplay.js"></script>
+<script src="js/ui.js"></script>
+<script>UI.boot();</script>
+</body>
+</html>
