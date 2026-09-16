@@ -97,11 +97,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 #tip .tl{color:var(--dim);font-size:11px}
 
 /* ---------- 사이드 탭 ---------- */
-#tabs{display:flex;flex-wrap:wrap;background:#121c26;border-bottom:1px solid var(--line);flex:0 0 auto}
-.tab{padding:9px 0;flex:1 1 14%;font-size:12px;color:var(--dim);border-bottom:2px solid transparent;text-align:center;white-space:nowrap}
+#tabs{display:flex;background:#121c26;border-bottom:1px solid var(--line);flex:0 0 auto}
+.tab{padding:9px 1px;flex:1 1 0;min-width:0;font-size:11.5px;color:var(--dim);
+  border-bottom:2px solid transparent;text-align:center;white-space:nowrap}
 .tab:hover{color:var(--txt);background:#1a2735}
 .tab.on{color:var(--gold2);border-bottom-color:var(--gold);background:#1b2836}
-.tab .bdg{display:inline-block;min-width:15px;padding:0 3px;margin-left:3px;border-radius:8px;background:var(--bad);color:#fff;font-size:9px;line-height:15px}
+.tab .bdg{display:inline-block;min-width:13px;padding:0 2px;margin-left:2px;border-radius:7px;background:var(--bad);color:#fff;font-size:9px;line-height:13px;vertical-align:1px}
 #panel{flex:1;overflow-y:auto;padding:12px;min-height:0}
 
 .sec{margin-bottom:14px}
@@ -258,3 +259,20 @@ input[type=range]{padding:0}
 
 .lg1.cheat .lgt{color:#d8a8ff}
 #legend .lgsep{height:1px;background:var(--line);margin:6px 0}
+
+
+/* ---------- 내각 ---------- */
+.mcard{background:#1b2734;border:1px solid var(--line);border-radius:6px;padding:9px 10px;margin-bottom:7px}
+.mcard.seat{border-color:var(--gold);background:#22303f}
+.mcard .mhd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.mcard .mhd b{font-size:13.5px}
+.mstats{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;margin-bottom:6px}
+.mstat{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim)}
+.mstat span{width:44px;flex:0 0 44px}
+.mstat b{width:14px;text-align:right;font-variant-numeric:tabular-nums;color:var(--txt)}
+.mstat.hot span{color:var(--gold2);font-weight:600}
+.sbar{flex:1;height:5px;background:#0e1822;border-radius:3px;overflow:hidden}
+.sbar i{display:block;height:100%;border-radius:3px}
+.mtr{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:4px}
+.mtrait{font-size:10px;background:#2a3a4a;border-radius:3px;padding:1px 6px;color:#bcd}
+.mtrait.bad{background:#4a2528;color:#ffb3b3}

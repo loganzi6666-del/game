@@ -132,7 +132,9 @@ function nextTurn(){
   for(const code in G.nats){
     const n=G.nats[code]; if(!n.alive) continue;
     economyTick(n); researchTick(n); buildTick(n); manpowerTick(n); stabilityTick(n);
+    if(typeof cabinetTick==='function') cabinetTick(n);
   }
+  for(const code in G.nats){ const n=G.nats[code]; if(n.alive) processMarchOrders(n); }
   provinceTick();
   warTick();
   aiTick();
@@ -198,7 +200,14 @@ function buildTick(n){
   for(let i=n.recruiting.length-1;i>=0;i--){
     const r=n.recruiting[i]; r.left--;
     if(r.left<=0){
-      if(r.kind==='navy'){ n.navy+=r.count;
+      if(r.kind==='navy'){
+        n.navy+=r.count;
+        if(typeof zonesTouching==='function'){      // 본토에서 가장 가까운 해역에 배치
+          let z=null;
+          for(const p of ownedProvs(n.code)){ if(p.ctrl!==n.code) continue;
+            const zs=zonesTouching(p.id); if(zs.length){ z=zs[0]; if(p.id===n.cap) break; } }
+          if(z){ n.fleets=n.fleets||{}; n.fleets[z]=(n.fleets[z]||0)+r.count; }
+        }
         if(n.code===G.player) logEvent('함선 진수', `주력함 ${r.count}척이 함대에 합류했다`, 'build', n.code); }
       else {
         const dest = (G.provs[r.prov] && G.provs[r.prov].ctrl===n.code) ? r.prov : n.cap;
@@ -215,6 +224,7 @@ function buildTick(n){
 }
 
 function manpowerTick(n){
+  if(typeof reconcileFleets==='function') reconcileFleets(n);
   for(const id in n.armies) if(!(n.armies[id] > 0.05)) delete n.armies[id];
   n.maxMan = maxManpower(n);
   n.casualties = Math.max(0, (n.casualties||0) - 0.35*(1 + (n.techs.p11?0.4:0)));
@@ -229,7 +239,7 @@ function stabilityTick(n){
                + n.pres*0.04 - (n.debt>0? Math.min(8, n.debt/40):0) - (n._m.unrest||0);
   n.stab += (target-n.stab)*0.25;
   n.stab = Math.max(0, Math.min(100, n.stab));
-  n.legit = Math.min(100, n.legit + (n.stab>60?0.12:-0.05));
+  n.legit = Math.max(0, Math.min(100, n.legit + (n.stab>60?0.12:-0.05) + (n._m.legitBonus||0)*0.02));
   if(warsOf(n.code).length) n.exh += 0.18 * n._m.exh;
   else n.exh = Math.max(0, n.exh-0.35);
   n.exh = Math.min(100, n.exh);
@@ -271,6 +281,40 @@ function provinceTick(){
         logEvent('민족 봉기', `${p.name}에서 봉기가 일어나 ${G.nats[target].adj}에 합류했다!`, 'bad', p.own); }
       else { owner.stab-=6;
         logEvent('폭동', `${p.name}에서 대규모 폭동이 발생했다.`, 'bad', p.own); }
+    }
+  }
+}
+
+/* ---------- 진군 명령 ----------
+   먼 곳을 찍어 두면 매달 한 칸씩 스스로 나아간다. 적지를 만나면 교전한다. */
+function setMarchOrder(code, from, to, divs){
+  const n=G.nats[code];
+  if(!(n.armies[from]>=1)) return {ok:false,msg:'그 지역에 병력이 없다'};
+  if(from===to){ delete n.orders[from]; return {ok:true,msg:'명령을 취소했다'}; }
+  if(!G.provs[to]) return {ok:false,msg:'없는 지역이다'};
+  const step=nextStep(code, from, to);
+  if(!step) return {ok:false,msg:'그곳까지 갈 수 있는 길이 없다 (통행권이 없거나 바다로 막혀 있다)'};
+  n.orders=n.orders||{};
+  n.orders[from]={to, divs: Math.min(divs||n.armies[from], n.armies[from])};
+  return {ok:true,msg:`${G.provs[from].name} 부대가 ${G.provs[to].name}(으)로 진군한다`};
+}
+function processMarchOrders(n){
+  n.orders=n.orders||{};
+  for(const from of Object.keys(n.orders)){
+    const o=n.orders[from];
+    if(!(n.armies[from]>=1) || !G.provs[o.to]){ delete n.orders[from]; continue; }
+    if(from===o.to){ delete n.orders[from]; continue; }
+    const step=nextStep(n.code, from, o.to);
+    if(!step){ delete n.orders[from]; if(n.code===G.player)
+      logEvent('진군 중단', `${G.provs[from].name}의 부대가 길을 찾지 못했다.`, 'war', n.code); continue; }
+    const divs=Math.min(o.divs||n.armies[from], n.armies[from]);
+    const target=G.provs[step];
+    let r;
+    if(target.ctrl!==n.code && atWarWith(n.code, target.ctrl)) r=attack(n.code, from, step, divs);
+    else r=moveArmy(n.code, from, step, divs);
+    delete n.orders[from];
+    if(r && r.ok!==false && n.armies[step]>=1 && step!==o.to){
+      n.orders[step]={to:o.to, divs:o.divs};       // 명령을 새 위치로 넘긴다
     }
   }
 }

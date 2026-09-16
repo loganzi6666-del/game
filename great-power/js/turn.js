@@ -120,7 +120,11 @@ function attack(code, from, to, divs){
   if(divs<1) return {ok:false,msg:'출발 지역에 병력이 없다'};
 
   const naval = isSeaLink(from,to);
-  if(naval && n.navy < 4) return {ok:false,msg:'상륙작전에는 해군 4척 이상이 필요하다'};
+  let landingZone=null;
+  if(naval){
+    landingZone = (typeof canLand==='function') ? canLand(code, from, to) : (n.navy>=4?'x':null);
+    if(!landingZone) return {ok:false,msg:'제해권이 없다 — 두 해안을 잇는 해역에 우세한 함대(3척 이상)가 있어야 상륙할 수 있다'};
+  }
 
   const en = G.nats[enemyOwner];
   const defDivs = (en && en.armies[to]) || 0;
@@ -339,9 +343,9 @@ function doDiplo(a, b, act){
   const set = v=>{ B.relations[a]=Math.max(-100,Math.min(100,v)); A.relations[b]=B.relations[a]; };
 
   switch(act){
-    case 'improve': set(rel()+12); return {ok:true,msg:`${Jwa(B.adj)}의 관계가 개선되었다 (${rel()})`};
+    case 'improve': set(rel()+Math.round(12*(A._m.dip||1))); return {ok:true,msg:`${Jwa(B.adj)}의 관계가 개선되었다 (${rel()})`};
     case 'insult':  set(rel()-15); A.pres+=1; return {ok:true,msg:`${B.adj}를 규탄했다`};
-    case 'subsidy': set(rel()+20); return {ok:true,msg:`${B.adj}에 재정 지원을 보냈다`};
+    case 'subsidy': set(rel()+Math.round(20*(A._m.dip||1))); return {ok:true,msg:`${B.adj}에 재정 지원을 보냈다`};
     case 'breakally':
       A.allies=A.allies.filter(x=>x!==b); B.allies=B.allies.filter(x=>x!==a);
       A.pres-=5; set(rel()-25); return {ok:true,msg:`${Jwa(B.adj)}의 동맹을 파기했다`};

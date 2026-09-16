@@ -6,6 +6,7 @@ let PICK=null;
 
 function initStart(){
   buildAdjacency();
+  buildSeaZones();
   // 시작 화면 지도
   const svg=$('#startmap');
   svg.setAttribute('viewBox',`0 0 ${MAP_VIEW.w} ${MAP_VIEW.h}`);

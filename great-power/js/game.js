@@ -75,6 +75,7 @@ function newGame(playerCode, opts){
       alloc:{ind:34,pol:33,mil:33},
       armies:{}, navy:d.navy, manpower:0, casualties:0, exh:0, taxRate:1.0,
       relations:{}, allies:[], truces:{}, guarantees:[], vassalOf:null, vassals:[],
+      fleets:{}, fleetMoved:{}, orders:{}, cabinet:{}, candidates:{},
       building:[], recruiting:[], ai:d.ai||{agg:.3,exp:.3,dip:.5}, gp:!!d.gp,
       alive:true, score:0, rank:99, aggression:0, warGoals:{},
       history:[],
@@ -86,6 +87,8 @@ function newGame(playerCode, opts){
 
   // 초기 외교 관계 (1900년 실제 정세)
   setupDiplomacy();
+  if(typeof deployFleets==='function') deployFleets();
+  if(typeof initCabinet==='function') for(const c in G.nats) initCabinet(G.nats[c]);
   recalcScores();
   computeHandicap();
   for(const c in G.nats){ const n=G.nats[c]; n._m=calcMods(n);
@@ -165,6 +168,16 @@ function calcMods(n){
     }
   }
   if(TRAITS[n.code]) TRAITS[n.code](m);
+  if(typeof cabinetMods==='function' && n.cabinet){
+    const cm=cabinetMods(n);
+    m.tax*=(1+cm.tax); m.res*=(1+cm.res); m.ind*=(1+cm.ind);
+    m.atk*=(1+cm.atk); m.def*=(1+cm.def); m.col*=(1+cm.col);
+    m.bld*=(1+cm.bld); m.grw*=(1+cm.grw); m.exh*=(1+(cm.exh||0));
+    m.dip=(m.dip||1)*(1+cm.dip);
+    m.stab+=cm.stab; m.pp+=cm.pp;
+    m.unrest=(m.unrest||0)+cm.unrest;
+    m.legitBonus=cm.legit||0; m.cabRel=cm.rel||0; m.vacancies=cm.vac||0;
+  }
   if(G && G.handicap && n.code===G.player){
     const H=G.handicap;
     m.res*=H.res; m.tax*=H.tax; m.grw*=H.grw; m.def*=H.def;
@@ -190,6 +203,7 @@ function provIncome(p, n, m){
   if(p.colonial) v *= 0.42 * m.col;
   if(p.own !== p.ctrl) v = 0;                       // 점령당한 땅은 세금이 안 걷힌다
   v *= (1 - Math.min(0.8, p.unrest/120));
+  if(typeof isBlockaded==='function' && isBlockaded(p)) v *= 0.45;   // 해상 봉쇄
   return v * m.tax * n.taxRate;
 }
 

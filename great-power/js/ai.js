@@ -12,6 +12,7 @@ function aiTick(){
     if(G.turn % 2 === h%2) aiSpend(n);
     if(G.turn % 4 === h%4) aiDiplomacy(n);
     aiWarMoves(n);
+    if(typeof aiFleetTick==='function') aiFleetTick(n);
     if(G.turn % 12 === h%12) aiWarDecision(n);
   }
 }

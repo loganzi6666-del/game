@@ -117,89 +117,124 @@ function paintMarkers(){
   const g=$('#map #gMark'); g.innerHTML='';
   const zoom = MAP_VIEW.w/UI.view.w;
   const U = mapUnit();                 // 화면 1px = U 지도단위
-  const px = v => v*U;                 // 화면 px 를 지도단위로
+  const px = v => v*U;
+  const me = G.nats[G.player];
 
-  /* ── 인프라 아이콘 ── */
-  if(zoom > 1.15){
-    const s = px(4.6);                       // 글리프 반지름 (화면 기준 고정)
-    const w = s*2.0;
-    for(const id in G.provs){
-      const p=G.provs[id];
-      const icons=[];
-      const factories = p.dev>=9?3 : p.dev>=6?2 : p.dev>=3?1 : 0;
-      for(let i=0;i<factories;i++) icons.push(['fac',null]);
-      if(p.fort>0) icons.push(['fort', p.fort]);
-      if(p.rail>0) icons.push(['rail', p.rail]);
-      const building = buildingsAt(id);
-      if(building) icons.push(['work', building]);
-      if(!icons.length) continue;
-
-      const total = icons.length*w;
-      // 아이콘 줄이 프로빈스 안에 들어갈 때만 그린다
-      const span = Math.sqrt(RAWMAP[id] ? RAWMAP[id].a : 0);
-      if(span < total*0.85 && id!==UI.sel) continue;
-
-      const [cx,cy]=provCentre(id);
-      const y = cy + px(15);
-      g.appendChild(sv('rect',{x:cx-total/2-s*0.35, y:y-s*1.5, width:total+s*0.7, height:s*2.7,
-        rx:s*0.5, fill:'#0b1620', opacity:.5}));
-      let x = cx - total/2 + w/2;
-      for(const [kind,val] of icons){ drawInfra(g, kind, x, y, s, val); x+=w; }
-    }
-  }
-
-  /* ── 완공 표시 (2개월간 금빛 고리) ── */
-  if(G.fx){
-    const stack={};                                  // 같은 지역에 여러 건이면 위로 쌓는다
-    for(const f of G.fx){
-      const age = G.turn - f.turn;
-      if(age > 2 || !RAWMAP[f.prov]) continue;
-      const [cx,cy]=provCentre(f.prov);
-      const r = px(16 + age*9);
-      g.appendChild(sv('circle',{cx,cy,r, fill:'none', stroke:'#e5c65a',
-        'stroke-width':2.2, 'vector-effect':'non-scaling-stroke', opacity: 0.9 - age*0.28}));
-      const k = stack[f.prov] = (stack[f.prov]||0) + 1;
-      const t=sv('text',{x:cx, y:cy-r-px(6+ (k-1)*13), class:'caplabel',
-        style:`font-size:${px(11)}px;stroke-width:${px(3)}px;fill:#ffe9a8`});
-      t.textContent=f.label; g.appendChild(t);
-    }
-  }
-
-  /* ── 병력 ── */
-  const acc={};
+  /* 1) 프로빈스별로 무엇을 그릴지 먼저 모은다 — 그래야 겹치지 않게 쌓을 수 있다 */
+  const stacks={};
   for(const c in G.nats){ const n=G.nats[c];
     for(const id in n.armies){ const v=n.armies[id]; if(v<0.5) continue;
-      if(!acc[id]) acc[id]=[]; acc[id].push([c,v]); } }
-  for(const id in acc){
-    if(!RAWMAP[id]) continue;
+      (stacks[id]=stacks[id]||[]).push([c,v]); } }
+  const fxByProv={};
+  if(G.fx) for(const f of G.fx){
+    if(G.turn-f.turn>2 || !RAWMAP[f.prov]) continue;
+    (fxByProv[f.prov]=fxByProv[f.prov]||[]).push(f);
+  }
+  const showInfra = zoom > 1.15;
+  const s = px(4.6), iw = s*2.0;
+
+  const layout = {};
+  for(const id in G.provs){
+    const p=G.provs[id];
+    const icons=[];
+    if(showInfra){
+      const fac = p.dev>=9?3 : p.dev>=6?2 : p.dev>=3?1 : 0;
+      for(let i=0;i<fac;i++) icons.push(['fac',null]);
+      if(p.fort>0) icons.push(['fort', p.fort]);
+      if(p.rail>0) icons.push(['rail', p.rail]);
+      const bd = buildingsAt(id);
+      if(bd) icons.push(['work', bd]);
+    }
+    const st = stacks[id];
+    const armyR = st ? px(Math.max(7, Math.min(20, 7+Math.sqrt(st[0][1])*1.7))) : 0;
+    if(!icons.length && !st && !fxByProv[id]) continue;
+    layout[id] = { icons, st, armyR };
+  }
+
+  /* 2) 시설 — 병력 원 아래로 밀어 놓는다 */
+  for(const id in layout){
+    const L=layout[id];
+    if(!L.icons.length) continue;
+    const total = L.icons.length*iw;
+    const span = Math.sqrt(RAWMAP[id] ? RAWMAP[id].a : 0);
+    if(span < total*0.85 && id!==UI.sel) continue;
     const [cx,cy]=provCentre(id);
-    const list=acc[id].sort((a,b)=>b[1]-a[1]);
+    const y = cy + Math.max(px(14), L.armyR + px(11));
+    g.appendChild(sv('rect',{x:cx-total/2-s*0.35, y:y-s*1.5, width:total+s*0.7, height:s*2.7,
+      rx:s*0.5, fill:'#0b1620', opacity:.55}));
+    let x = cx - total/2 + iw/2;
+    for(const [kind,val] of L.icons){ drawInfra(g, kind, x, y, s, val); x+=iw; }
+  }
+
+  /* 3) 진군 명령선 */
+  for(const from in (me.orders||{})){
+    const o=me.orders[from];
+    if(!G.provs[from]||!G.provs[o.to]) continue;
+    const a=provCentre(from), b=provCentre(o.to);
+    g.appendChild(sv('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1], stroke:'#e5c65a',
+      'stroke-width':1.8, 'vector-effect':'non-scaling-stroke','stroke-dasharray':'6 5', opacity:.75}));
+    g.appendChild(sv('circle',{cx:b[0],cy:b[1],r:px(5), fill:'none', stroke:'#e5c65a',
+      'stroke-width':1.8,'vector-effect':'non-scaling-stroke'}));
+  }
+
+  /* 4) 병력 */
+  for(const id in layout){
+    const L=layout[id]; if(!L.st) continue;
+    const [cx,cy]=provCentre(id);
+    const list=L.st.sort((a,b)=>b[1]-a[1]);
     const [c,v]=list[0];
     const mine = c===G.player;
-    const rpx = Math.max(7, Math.min(20, 7+Math.sqrt(v)*1.7));
-    const r = px(rpx);
-    const yy = cy - (zoom>1.15 ? px(5) : 0);
-    g.appendChild(sv('circle',{cx, cy:yy, r, fill:G.nats[c].color, stroke: mine?'#e5c65a':'#0b1620',
-      'stroke-width': mine?2.2:1.4, 'vector-effect':'non-scaling-stroke', opacity:.95, class:'armydot'}));
-    const t=sv('text',{x:cx, y:yy+px(rpx*0.36), class:'armytag',
-      style:`font-size:${px(Math.max(9,Math.min(13,rpx*0.9)))}px;stroke-width:${px(2.5)}px`});
+    const sel = UI.order && UI.order.from===id;
+    g.appendChild(sv('circle',{cx, cy, r:L.armyR, fill:G.nats[c].color,
+      stroke: sel?'#ffffff' : mine?'#e5c65a':'#0b1620',
+      'stroke-width': sel?3 : mine?2.2:1.4, 'vector-effect':'non-scaling-stroke',
+      opacity:.96, class:'armydot'}));
+    const t=sv('text',{x:cx, y:cy+L.armyR*0.36, class:'armytag',
+      style:`font-size:${px(Math.max(9,Math.min(13,L.armyR/U*0.9)))}px;stroke-width:${px(2.5)}px`});
     t.textContent=Math.round(v); g.appendChild(t);
-    if(list.length>1){                       // 같은 칸에 적군도 있다 = 교전
-      const t2=sv('text',{x:cx+r+px(4), y:yy-r*0.4, class:'caplabel',
+    if(me.orders && me.orders[id]){                      // 진군 중 표시
+      const m=sv('text',{x:cx+L.armyR+px(3), y:cy+px(4), class:'caplabel',
+        style:`font-size:${px(10)}px;fill:#ffe9a8;stroke-width:${px(3)}px`});
+      m.textContent='»'; g.appendChild(m);
+    }
+    if(list.length>1){
+      const t2=sv('text',{x:cx-L.armyR-px(4), y:cy-L.armyR*0.3, class:'caplabel',
         style:`font-size:${px(11)}px;fill:#ff9a9a;stroke-width:${px(3)}px`});
       t2.textContent='⚔'; g.appendChild(t2);
     }
   }
 
-  /* ── 수도 ── */
+  /* 5) 수도 이름 — 병력 원 위쪽 */
   if(zoom>1.5){
     for(const c in G.nats){ const n=G.nats[c]; if(!n.alive || !RAWMAP[n.cap]) continue;
+      if(fxByProv[n.cap]) continue;
       const [cx,cy]=provCentre(n.cap);
-      if(G.fx && G.fx.some(f=>f.prov===n.cap && G.turn-f.turn<=2)) continue;  // 완공 문구와 겹치지 않게
-      const t=sv('text',{x:cx, y:cy-px(15), class:'caplabel',
+      const off = (layout[n.cap] ? layout[n.cap].armyR : 0) + px(8);
+      const t=sv('text',{x:cx, y:cy-off, class:'caplabel',
         style:`font-size:${px(10.5)}px;stroke-width:${px(3)}px`});
       t.textContent='★ '+n.adj; g.appendChild(t); }
   }
+
+  /* 6) 완공 알림 — 맨 위에 한 줄로 합쳐서 */
+  for(const id in fxByProv){
+    const arr=fxByProv[id];
+    const [cx,cy]=provCentre(id);
+    const age = G.turn - arr[0].turn;
+    const ring = px(16 + age*9);
+    g.appendChild(sv('circle',{cx,cy,r:ring, fill:'none', stroke:'#e5c65a',
+      'stroke-width':2.2, 'vector-effect':'non-scaling-stroke', opacity: 0.9 - age*0.28}));
+    const label = arr.length>1 ? `${arr.length}건 완공` : arr[0].label;
+    const base = cy - Math.max(ring, (layout[id]?layout[id].armyR:0) + px(10)) - px(6);
+    const fs = px(10.5);
+    const w = px(label.length*7 + 12);
+    g.appendChild(sv('rect',{x:cx-w/2, y:base-fs*1.15, width:w, height:fs*1.6, rx:px(3),
+      fill:'#1b2734', opacity:.9, stroke:'#e5c65a','stroke-width':1,'vector-effect':'non-scaling-stroke'}));
+    const t=sv('text',{x:cx, y:base+px(1.5), class:'caplabel',
+      style:`font-size:${fs}px;stroke-width:0;fill:#ffe9a8`});
+    t.textContent=label; g.appendChild(t);
+  }
+
+  if(typeof drawFleets==='function') drawFleets(g, px);
 }
 
 function buildingsAt(provId){
@@ -302,8 +337,9 @@ function setupMapInteraction(){
   });
   window.addEventListener('mouseup', e=>{
     if(drag && !drag.moved){
-      const t=e.target.closest('path.prov');
-      if(t) onProvClick(t.getAttribute('data-id'));
+      const sea=e.target.closest('circle.seahit');
+      if(sea) onSeaClick(sea.getAttribute('data-zone'));
+      else { const t=e.target.closest('path.prov'); if(t) onProvClick(t.getAttribute('data-id')); }
     }
     drag=null; svg.classList.remove('dragging');
   });
@@ -315,8 +351,20 @@ function setupMapInteraction(){
     zoomAt(e.deltaY<0?1.25:0.8, cx, cy);
   },{passive:false});
   svg.addEventListener('mousemove', e=>{
-    const t=e.target.closest('path.prov');
     const tip=$('#tip');
+    const sea=e.target.closest('circle.seahit');
+    if(sea){
+      const z=sea.getAttribute('data-zone'), Z=SEA_ZONES[z];
+      const f=fleetsIn(z);
+      tip.innerHTML=`<b>${esc(Z.n)}</b><div class="tl">해역</div>`+
+        (f.length? f.map(([c,v])=>`<div>${esc(G.nats[c].adj)} 함대 ${Math.round(v)}척</div>`).join('')
+                 : `<div class="tl">함대 없음</div>`);
+      tip.style.display='block';
+      tip.style.left=Math.min(window.innerWidth-tip.offsetWidth-10, e.clientX+16)+'px';
+      tip.style.top=Math.max(8, e.clientY-tip.offsetHeight-12)+'px';
+      return;
+    }
+    const t=e.target.closest('path.prov');
     if(!t){ tip.style.display='none'; return; }
     const p=G.provs[t.getAttribute('data-id')]; if(!p){ tip.style.display='none'; return; }
     tip.innerHTML=tipHTML(p);
@@ -342,9 +390,27 @@ function tipHTML(p){
   return s;
 }
 
+function onSeaClick(zone){
+  const me=G.nats[G.player];
+  if(UI.seaSel && UI.seaSel!==zone && me.fleets && me.fleets[UI.seaSel] && zoneAdj(UI.seaSel).includes(zone)){
+    const r=fleetMove(G.player, UI.seaSel, zone, UI.fleetDivs || me.fleets[UI.seaSel]);
+    toast(r.msg, r.ok);
+    if(r.ok) UI.seaSel=zone;
+    refreshAll(); return;
+  }
+  UI.seaSel = (UI.seaSel===zone) ? null : zone;
+  UI.sel=null; UI.order=null; UI.tab='sea'; syncTabs(); refreshAll();
+}
+
 function onProvClick(id){
-  if(UI.order && UI.order.from && neighbours(UI.order.from).includes(id)){
-    execOrder(id); return;
+  UI.seaSel=null;
+  if(UI.order && UI.order.from && UI.order.from!==id){
+    if(neighbours(UI.order.from).includes(id)){ execOrder(id); return; }
+    // 멀리 있는 곳은 진군 명령
+    const r=setMarchOrder(G.player, UI.order.from, id, UI.order.divs);
+    toast(r.msg, r.ok);
+    if(r.ok){ UI.order=null; UI.sel=id; }
+    refreshAll(); return;
   }
   UI.sel=id; UI.order=null; UI.tab='prov';
   syncTabs(); paintMap(); renderPanel();
@@ -442,7 +508,8 @@ function renderPanel(){
   const P=$('#panel');
   P.innerHTML = ({
     nation:panelNation, prov:panelProv, tech:panelTech,
-    mil:panelMil, dip:panelDip, pol:panelPol, rank:panelRank,
+    mil:panelMil, sea:panelSea, cab:panelCabinet,
+    dip:panelDip, pol:panelPol, rank:panelRank,
   }[UI.tab]||panelNation)();
   P.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>handleAct(b.dataset)));
 }
@@ -560,15 +627,33 @@ function panelProv(){
   }
   const myArmy=me.armies[p.id]||0;
   if(myArmy>=1){
-    h+=`<div class="sec"><h3>군령</h3>
-      <div class="muted">이 지역에 ${fmt(myArmy,1)}개 사단이 주둔 중이다.</div>
+    const sel = UI.order && UI.order.from===p.id;
+    const divs = sel ? UI.order.divs : Math.round(myArmy);
+    const order = me.orders && me.orders[p.id];
+    h+=`<div class="sec"><h3>부대 지휘</h3>
+      <div class="row"><span class="k">주둔 병력</span><span class="v">${fmt(myArmy,1)}개 사단</span></div>
+      <div class="row"><span class="k">보낼 병력</span><span class="v" id="divLbl">${fmt(divs)}개</span></div>
+      <input type="range" id="divR" min="1" max="${Math.floor(myArmy)}" value="${Math.min(divs,Math.floor(myArmy))}" style="width:100%">
       <div class="btnrow">
-        <button class="btn sm gold" data-act="order" data-divs="all">전군 이동/공격</button>
-        <button class="btn sm" data-act="order" data-divs="half">절반만</button>
-        ${UI.order?'<button class="btn sm red" data-act="cancelorder">취소</button>':''}
+        <button class="btn sm" data-act="setdiv" data-v="1">1</button>
+        <button class="btn sm" data-act="setdiv" data-v="half">절반</button>
+        <button class="btn sm" data-act="setdiv" data-v="all">전군</button>
       </div>
-      ${UI.order?'<div class="tiny" style="margin-top:6px;color:var(--gold2)">목표 지역을 지도에서 클릭하세요. 초록=이동, 빨강=공격</div>':''}
+      <div class="btnrow">
+        <button class="btn ${sel?'red':'gold'}" data-act="order" style="flex:1">
+          ${sel?'지휘 취소':'부대 지휘 시작'}</button>
+      </div>
+      ${sel?`<div class="tiny" style="margin-top:6px;color:var(--gold2)">
+          지도에서 목표를 클릭하세요.<br>
+          · <b>인접 지역</b> — 즉시 이동(초록) 또는 공격(빨강)<br>
+          · <b>먼 지역</b> — 진군 명령, 매달 한 칸씩 스스로 전진하며 적을 만나면 교전</div>`:''}
+      ${order?`<div class="card" style="margin-top:8px;border-color:var(--gold)">
+          <h4>진군 중 <button class="btn sm red" data-act="cancelmarch" data-id="${p.id}">중지</button></h4>
+          <div class="tiny">목표: ${esc(G.provs[order.to].name)} · ${fmt(order.divs)}개 사단</div></div>`:''}
       </div>`;
+    setTimeout(()=>{ const r=$('#divR'); if(r){ r.addEventListener('input',()=>{
+      $('#divLbl').textContent=fmt(r.value)+'개';
+      UI.order = UI.order || {from:p.id}; UI.order.from=p.id; UI.order.divs=+r.value; }); } },0);
   }
   if(!mine && own && own.code!==G.player){
     h+=`<div class="sec"><h3>대외</h3><div class="btnrow">
@@ -630,38 +715,42 @@ function panelTech(){
   return h;
 }
 
-/* ---------- 군사 ---------- */
+/* ---------- 육군 ---------- */
 function panelMil(){
   const n=G.nats[G.player];
   const stacks=Object.keys(n.armies).filter(id=>n.armies[id]>=0.5)
     .sort((a,b)=>n.armies[b]-n.armies[a]);
   let h=`<div class="sec"><h3>병력</h3>
-    <div class="row"><span class="k">육군</span><span class="v">${fmt(armyTotal(n),1)}개 사단</span></div>
-    <div class="row"><span class="k">해군</span><span class="v">${fmt(n.navy)}척 / 최대 ${fmt(maxNavy(n))}</span></div>
+    <div class="row"><span class="k">육군</span><span class="v">${fmt(armyTotal(n),1)}개 사단 · ${stacks.length}개 부대</span></div>
     <div class="row"><span class="k">동원 여력</span><span class="v">${fmt(freeManpower(n))}만 (${Math.floor(freeManpower(n)/DIV_MAN)}개 사단분)</span></div>
     <div class="row"><span class="k">공격력 / 방어력</span><span class="v">×${(n._m.atk).toFixed(2)} / ×${(n._m.def).toFixed(2)}</span></div>
-    <div class="row"><span class="k">해군력</span><span class="v">×${(n._m.nav).toFixed(2)}</span></div>
-    <div class="btnrow">
-      <button class="btn sm" data-act="ships" data-n="1">함선 1척 £${SHIP_COST}</button>
-      <button class="btn sm" data-act="ships" data-n="3">3척</button>
-      <button class="btn sm red" data-act="disband">1개 사단 해산</button>
-    </div></div>`;
-  h+=`<div class="sec"><h3>부대 배치</h3><table class="t"><tr><th>지역</th><th class="num">사단</th><th></th></tr>`;
+    <div class="btnrow"><button class="btn sm red" data-act="disband">선택 지역 1개 사단 해산</button></div>
+    </div>`;
+  h+=`<div class="sec"><h3>부대 배치</h3>`;
+  if(!stacks.length) h+=`<div class="muted">보유한 부대가 없다.</div>`;
   for(const id of stacks){
     const p=G.provs[id];
     const front = neighbours(id).some(x=>atWarWith(G.player,G.provs[x].ctrl));
-    h+=`<tr><td>${esc(p.name)}${front?' <span style="color:#e08a8a">⚔</span>':''}</td>
-      <td class="num">${fmt(n.armies[id],1)}</td>
-      <td class="num"><button class="btn sm" data-act="goprov" data-id="${id}">보기</button></td></tr>`;
+    const order = n.orders && n.orders[id];
+    const sel = UI.order && UI.order.from===id;
+    h+=`<div class="card" style="${sel?'border-color:var(--gold)':''}">
+      <h4>${esc(p.name)} ${front?'<span style="color:#e08a8a">⚔ 전선</span>':''}
+        <span class="tc">${fmt(n.armies[id],1)}개 사단</span></h4>
+      ${order?`<div class="tiny" style="color:var(--gold2)">→ ${esc(G.provs[order.to].name)}(으)로 진군 중</div>`:''}
+      <div class="tiny">보급 ×${supplyAt(n,id).toFixed(2)} · ${TERRAIN[p.ter].n} · 요새 ${p.fort}</div>
+      <div class="btnrow">
+        <button class="btn sm" data-act="goprov" data-id="${id}">지도에서 보기</button>
+        <button class="btn sm ${sel?'red':'gold'}" data-act="pickstack" data-id="${id}">${sel?'지휘 취소':'지휘'}</button>
+        ${order?`<button class="btn sm red" data-act="cancelmarch" data-id="${id}">진군 중지</button>`:''}
+      </div></div>`;
   }
-  h+=`</table></div>`;
+  h+=`</div>`;
   const wars=warsOf(G.player);
   if(wars.length){
     h+=`<div class="sec"><h3>전선</h3>`;
     for(const w of wars){
       const mine=sideOf(w,G.player);
-      const foes=(mine==='att'?w.def:w.att);
-      for(const f of foes){
+      for(const f of (mine==='att'?w.def:w.att)){
         const fr=[];
         for(const id in G.provs){ const p=G.provs[id];
           if(p.ctrl!==f) continue;
@@ -675,6 +764,71 @@ function panelMil(){
     }
     h+=`</div>`;
   }
+  return h;
+}
+
+/* ---------- 해군 ---------- */
+function panelSea(){
+  const n=G.nats[G.player];
+  n.fleets=n.fleets||{};
+  const zones=Object.keys(n.fleets).filter(z=>n.fleets[z]>=0.5);
+  let h=`<div class="sec"><h3>함대</h3>
+    <div class="row"><span class="k">총 함선</span><span class="v">${fmt(n.navy)}척 / 조선 상한 ${fmt(maxNavy(n))}</span></div>
+    <div class="row"><span class="k">해군력 보정</span><span class="v">×${n._m.nav.toFixed(2)}</span></div>
+    <div class="btnrow">
+      <button class="btn sm" data-act="ships" data-n="1">1척 건조 £${SHIP_COST}</button>
+      <button class="btn sm" data-act="ships" data-n="3">3척</button>
+      <button class="btn sm" data-act="ships" data-n="5">5척</button>
+    </div>
+    <div class="tiny" style="margin-top:5px">함선은 ${SHIP_TIME}개월 뒤 본토 해역에 배치된다.</div></div>`;
+
+  if(UI.seaSel){
+    const Z=SEA_ZONES[UI.seaSel];
+    const here=fleetsIn(UI.seaSel);
+    const mineHere=n.fleets[UI.seaSel]||0;
+    h+=`<div class="sec"><h3>${esc(Z.n)}</h3>`;
+    h+= here.length? here.map(([c,v])=>{
+        const war=atWarWith(G.player,c);
+        return `<div class="row"><span class="k"><i class="dotc" style="background:${G.nats[c].color}"></i>${esc(G.nats[c].adj)}${war?' <span class="down">교전</span>':''}</span><span class="v">${fmt(v)}척</span></div>`;
+      }).join('') : `<div class="muted">함대 없음</div>`;
+    const coastal=Z.coasts.map(c=>G.provs[c]).filter(Boolean);
+    const blockable=coastal.filter(p=>atWarWith(G.player,p.own));
+    if(blockable.length) h+=`<div class="tiny" style="margin-top:6px;color:#e08a8a">봉쇄 대상: ${blockable.map(p=>esc(p.name)).join(', ')}</div>`;
+    h+=`<div class="tiny" style="margin-top:5px">접한 해안: ${coastal.slice(0,10).map(p=>esc(p.name)).join(', ')}${coastal.length>10?' 외':''}</div>`;
+    if(mineHere>=1){
+      h+=`<div class="row" style="margin-top:8px"><span class="k">보낼 함선</span><span class="v" id="fleetLbl">${fmt(UI.fleetDivs||mineHere)}척</span></div>
+        <input type="range" id="fleetR" min="1" max="${Math.floor(mineHere)}" value="${Math.min(UI.fleetDivs||mineHere,Math.floor(mineHere))}" style="width:100%">
+        <div class="tiny">아래 해역을 누르거나 지도에서 인접 해역을 클릭하면 이동한다. 한 해역은 한 달에 한 번만 움직일 수 있다.</div>
+        <div class="btnrow">`;
+      for(const z of zoneAdj(UI.seaSel)){
+        h+=`<button class="btn sm" data-act="fleetmove" data-to="${z}">${esc(SEA_ZONES[z].n)} →</button>`;
+      }
+      h+=`</div>`;
+      setTimeout(()=>{ const r=$('#fleetR'); if(r) r.addEventListener('input',()=>{
+        $('#fleetLbl').textContent=fmt(r.value)+'척'; UI.fleetDivs=+r.value; }); },0);
+    }
+    h+=`<div class="btnrow"><button class="btn sm" data-act="seaback">← 전체 해역</button></div></div>`;
+    return h;
+  }
+
+  h+=`<div class="sec"><h3>우리 함대 배치</h3>`;
+  if(!zones.length) h+=`<div class="muted">바다에 나가 있는 함대가 없다.</div>`;
+  for(const z of zones.sort((a,b)=>n.fleets[b]-n.fleets[a])){
+    const here=fleetsIn(z);
+    const hostile=here.filter(([c])=>atWarWith(G.player,c));
+    h+=`<div class="card"><h4>${esc(SEA_ZONES[z].n)}<span class="tc">${fmt(n.fleets[z])}척</span></h4>
+      ${hostile.length?`<div class="tiny" style="color:#e08a8a">적 함대: ${hostile.map(([c,v])=>esc(G.nats[c].adj)+' '+Math.round(v)).join(', ')}</div>`:'<div class="tiny">제해권 확보</div>'}
+      <div class="btnrow"><button class="btn sm gold" data-act="goSea" data-z="${z}">지휘</button></div></div>`;
+  }
+  h+=`</div>`;
+  h+=`<div class="sec"><h3>전 세계 해역</h3><table class="t"><tr><th>해역</th><th>주둔 함대</th><th></th></tr>`;
+  for(const z in SEA_ZONES){
+    const f=fleetsIn(z);
+    h+=`<tr><td>${esc(SEA_ZONES[z].n)}</td>
+      <td>${f.length? f.slice(0,3).map(([c,v])=>`<i class="dotc" style="background:${G.nats[c].color}"></i>${Math.round(v)}`).join(' ') : '<span class="tiny">—</span>'}</td>
+      <td class="num"><button class="btn sm" data-act="goSea" data-z="${z}">보기</button></td></tr>`;
+  }
+  h+=`</table></div>`;
   return h;
 }
 
@@ -802,10 +956,37 @@ function handleAct(d){
     case 'dipback':UI.dipSel=null; break;
     case 'goprov': UI.sel=d.id; UI.tab='prov'; syncTabs(); focusProv(d.id); break;
     case 'order': {
+      if(UI.order && UI.order.from===UI.sel){ UI.order=null; break; }
       const have=n.armies[UI.sel]||0;
-      UI.order={from:UI.sel, divs: d.divs==='half'? Math.max(1,Math.floor(have/2)) : have};
-      toast('목표 지역을 클릭하세요', true); break;
+      UI.order={from:UI.sel, divs: Math.max(1, Math.floor((UI.order&&UI.order.divs)||have))};
+      toast('지도에서 목표를 클릭하세요 — 인접은 즉시, 먼 곳은 진군 명령', true); break;
     }
+    case 'setdiv': {
+      const have=Math.floor(n.armies[UI.sel]||0);
+      const v = d.v==='all'? have : d.v==='half'? Math.max(1,Math.floor(have/2)) : +d.v;
+      UI.order={from:UI.sel, divs:Math.min(have,Math.max(1,v))}; break;
+    }
+    case 'pickstack': {
+      if(UI.order && UI.order.from===d.id){ UI.order=null; UI.sel=d.id; break; }
+      UI.order={from:d.id, divs:Math.floor(n.armies[d.id]||1)};
+      UI.sel=d.id; focusProv(d.id);
+      toast('지도에서 목표를 클릭하세요', true); break;
+    }
+    case 'cancelmarch': {
+      if(n.orders) delete n.orders[d.id];
+      toast('진군 명령을 취소했다', true); break;
+    }
+    case 'fleetmove': {
+      const r=fleetMove(G.player, UI.seaSel, d.to, UI.fleetDivs);
+      toast(r.msg, r.ok); if(r.ok) UI.seaSel=d.to; break;
+    }
+    case 'goSea': { UI.seaSel=d.z; UI.tab='sea'; syncTabs(); UI.fleetDivs=null;
+      const Z=SEA_ZONES[d.z]; UI.view.x=Z.x-UI.view.w/2; UI.view.y=Z.y-UI.view.h/2; clampView(); applyView(); break; }
+    case 'seaback': UI.seaSel=null; UI.fleetDivs=null; break;
+    case 'cabpost': UI.postSel=d.post; break;
+    case 'cabback': UI.postSel=null; break;
+    case 'appoint': toastR(appointMinister(n, d.post, d.id)); break;
+    case 'dismiss': toastR(dismissMinister(n, d.post)); break;
     case 'cancelorder': UI.order=null; break;
     case 'disband': {
       const ids=Object.keys(n.armies).filter(i=>n.armies[i]>=1);
@@ -946,5 +1127,18 @@ function showEnding(){
 function refreshAll(){
   recalcScores();
   G.nats[G.player]._m = calcMods(G.nats[G.player]);
-  renderTop(); paintMap(); renderPanel(); renderLog();
+  renderTop(); paintMap(); renderPanel(); renderLog(); renderBadges();
+}
+
+/* 탭의 빨간 알림 — 공석, 진행 중 전쟁 */
+function renderBadges(){
+  const n=G.nats[G.player];
+  const set=(tab,v)=>{
+    const el2=document.querySelector(`.tab[data-t="${tab}"]`); if(!el2) return;
+    const old=el2.querySelector('.bdg'); if(old) old.remove();
+    if(v>0){ const b=el('span',{class:'bdg'}); b.textContent=v; el2.appendChild(b); }
+  };
+  let vac=0; if(n.cabinet) for(const p in POSTS) if(!n.cabinet[p]) vac++;
+  set('cab', vac);
+  set('mil', warsOf(G.player).length);
 }
