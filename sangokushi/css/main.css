@@ -166,8 +166,23 @@ body{
 .cmds .btn{text-align:left;padding:6px 9px;display:flex;justify-content:space-between;align-items:center}
 .cmds .btn small{color:var(--dim);font-size:11px}
 
+.genstrip{display:flex;flex-wrap:wrap;gap:3px;padding:4px;background:#0d0906;border:1px solid #3a2a18}
+.gs{width:40px;text-align:center;cursor:pointer;position:relative;border:1px solid transparent}
+.gs svg{width:38px;height:46px;display:block;border:1px solid #5a441c}
+.gs span{display:block;font-size:9.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim)}
+.gs:hover svg{border-color:var(--gold2)}
+.gs.on{border-color:var(--gold2);box-shadow:0 0 8px #c9a22766}
+.gs.on span{color:var(--cream)}
+.gs.off{opacity:.42}
+.lk{cursor:pointer;border-bottom:1px dotted #8a7550}
+.lk:hover{color:#fff}
+.tag.gold{border-color:var(--gold2);color:var(--gold2)}
+.cmds .btn small{margin-left:6px}
+.diffsel{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:6px 8px}
+.diffsel .btn{font-size:12px;padding:6px 4px}
+
 /* ---------- 모달 ---------- */
-#modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:60;padding:16px}
+#modal{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:84;padding:16px}
 #modal.on{display:flex}
 .win{background:linear-gradient(#2a1e14,#171009);border:2px solid var(--gold3);box-shadow:0 0 0 1px #6b5418,0 10px 40px #000c;
   display:flex;flex-direction:column;max-height:94vh;max-width:96vw}
@@ -256,7 +271,7 @@ input[type=number],select,input[type=text]{background:#120c07;border:1px solid #
 .warn{color:var(--warn)}
 
 /* 토스트 */
-#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:80;display:grid;gap:5px;pointer-events:none}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:92;display:grid;gap:5px;pointer-events:none}
 #toast div{background:#1a120bee;border:1px solid var(--gold3);padding:7px 16px;letter-spacing:1px;box-shadow:0 4px 18px #000a;
   animation:tin .25s ease-out}
 @keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1}}

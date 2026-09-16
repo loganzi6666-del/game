@@ -62,43 +62,52 @@ const APT_MULT = {S:1.30, A:1.15, B:1.00, C:0.82, D:0.65};
 const TECHS = [
 /* 내정 */
 {id:'civ_ox',   tree:'civ', n:'우경',     han:'牛耕',     cost:120, req:[],             tier:1, e:{agriCap:0.10, agriGain:0.15}, d:'소로 밭을 갈아 농업 상한 +10%, 개간 효율 +15%'},
-{id:'civ_mill', tree:'civ', n:'수차',     han:'水車',     cost:180, req:['civ_ox'],     tier:2, e:{foodYield:0.12, waterCap:0.15}, d:'수차로 관개. 식량 수확 +12%'},
-{id:'civ_tun',  tree:'civ', n:'둔전제',   han:'屯田制',   cost:280, req:['civ_ox'],     tier:2, e:{troopFood:-0.20, foodYield:0.08}, d:'군사가 농사도 짓는다. 병사 식량 소모 -20%'},
+{id:'civ_mill', tree:'civ', n:'수차',     han:'水車',     cost:210, req:['civ_ox'],     tier:2, e:{foodYield:0.12, waterCap:0.15}, d:'수차로 관개. 식량 수확 +12%'},
+{id:'civ_tun',  tree:'civ', n:'둔전제',   han:'屯田制',   cost:320, req:['civ_ox'],     tier:2, e:{troopFood:-0.20, foodYield:0.08}, d:'군사가 농사도 짓는다. 병사 식량 소모 -20%'},
 {id:'civ_coin', tree:'civ', n:'화폐주조', han:'鑄錢',     cost:260, req:[],             tier:1, e:{income:0.15}, d:'주전으로 유통 확대. 금 수입 +15%'},
-{id:'civ_mkt',  tree:'civ', n:'시장개혁', han:'市場改革', cost:340, req:['civ_coin'],   tier:2, e:{commCap:0.15, income:0.10}, d:'상업 상한 +15%, 수입 +10%'},
-{id:'civ_cen',  tree:'civ', n:'인구조사', han:'戶籍',     cost:300, req:['civ_coin'],   tier:2, e:{levy:0.20, orderGain:0.20}, d:'호적 정비. 징병량 +20%, 치안 회복 +20%'},
-{id:'civ_canal',tree:'civ', n:'대운하',   han:'大運河',   cost:620, req:['civ_mill','civ_mkt'], tier:3, e:{income:0.20, foodYield:0.15, march:0.15}, d:'물길로 이은 대동맥. 수입·수확·행군 모두 상승'},
-{id:'civ_gran', tree:'civ', n:'상평창',   han:'常平倉',   cost:520, req:['civ_tun','civ_cen'], tier:3, e:{foodCap:0.30, riotGuard:0.3}, d:'비축과 구휼. 기근 피해 대폭 감소'},
-{id:'civ_irr',  tree:'civ', n:'관개대공사',han:'灌漑大役', cost:900, req:['civ_canal','civ_gran'], tier:4, e:{agriCap:0.20, foodYield:0.20, waterCap:0.25}, d:'전국 수리 사업. 농업의 완성'},
+{id:'civ_mkt',  tree:'civ', n:'시장개혁', han:'市場改革', cost:390, req:['civ_coin'],   tier:2, e:{commCap:0.15, income:0.10}, d:'상업 상한 +15%, 수입 +10%'},
+{id:'civ_cen',  tree:'civ', n:'인구조사', han:'戶籍',     cost:340, req:['civ_coin'],   tier:2, e:{levy:0.20, orderGain:0.20}, d:'호적 정비. 징병량 +20%, 치안 회복 +20%'},
+{id:'civ_canal',tree:'civ', n:'대운하',   han:'大運河',   cost:1120, req:['civ_mill','civ_mkt'], tier:3, e:{income:0.20, foodYield:0.15, march:0.15}, d:'물길로 이은 대동맥. 수입·수확·행군 모두 상승'},
+{id:'civ_gran', tree:'civ', n:'상평창',   han:'常平倉',   cost:940, req:['civ_tun','civ_cen'], tier:3, e:{foodCap:0.30, riotGuard:0.3}, d:'비축과 구휼. 기근 피해 대폭 감소'},
+{id:'civ_irr',  tree:'civ', n:'관개대공사',han:'灌漑大役', cost:2430, req:['civ_canal','civ_gran'], tier:4, e:{agriCap:0.20, foodYield:0.20, waterCap:0.25}, d:'전국 수리 사업. 농업의 완성'},
 /* 군사 */
 {id:'mil_iron', tree:'mil', n:'단련철제', han:'鍛鐵',     cost:150, req:[],             tier:1, e:{weapon:1, power:0.05}, d:'철기 단련. 무기 등급 상한 +1'},
-{id:'mil_bow',  tree:'mil', n:'강노',     han:'强弩',     cost:230, req:['mil_iron'],   tier:2, e:{bow:0.18}, d:'쇠뇌 대량 배치. 궁병 전력 +18%'},
-{id:'mil_stir', tree:'mil', n:'등자',     han:'鐙子',     cost:240, req:['mil_iron'],   tier:2, e:{cav:0.18}, d:'등자와 편자. 기병 전력 +18%'},
-{id:'mil_form', tree:'mil', n:'진법',     han:'陣法',     cost:320, req:['mil_iron'],   tier:2, e:{power:0.10, tacBonus:0.15}, d:'팔진의 운용. 전 부대 전력 +10%, 전술 효과 +15%'},
-{id:'mil_heavy',tree:'mil', n:'개마중기', han:'鐵騎',     cost:520, req:['mil_stir','mil_form'], tier:3, e:{cav:0.22, armor:1}, d:'중장기병 편성. 기병 +22%, 방어구 상한 +1'},
-{id:'mil_siege',tree:'mil', n:'공성기',   han:'攻城機',   cost:420, req:['mil_form'],   tier:3, e:{siege:0.35}, d:'정란과 충차. 성벽 파괴 +35%'},
-{id:'mil_ship', tree:'mil', n:'조선술',   han:'造船術',   cost:380, req:['mil_iron'],   tier:2, e:{navy:0.18, shipCap:0.25}, d:'대형 함선 건조. 수군 +18%'},
-{id:'mil_pow',  tree:'mil', n:'화약',     han:'火藥',     cost:600, req:['mil_siege'],  tier:3, e:{siege:0.25, fire:0.35}, d:'진천뢰와 화통. 공성·화계 위력 급증'},
-{id:'mil_gun',  tree:'mil', n:'조총',     han:'鳥銃',     cost:820, req:['mil_pow'],    tier:4, e:{gunUnlock:1, gun:0.15}, d:'철포대 편성 가능. 훈련도가 곧 화력'},
-{id:'mil_iron_ship',tree:'mil',n:'철갑선',han:'鐵甲船',   cost:880, req:['mil_ship','mil_pow'], tier:4, e:{navy:0.28, shipCap:0.3}, d:'장갑 전함. 해전 절대 우위'},
-{id:'mil_army', tree:'mil', n:'상비군제', han:'常備軍',   cost:760, req:['mil_form'],   tier:3, e:{trainCap:15, upkeep:-0.15}, d:'직업군인화. 훈련 상한 +15, 유지비 -15%'},
-{id:'mil_ele',  tree:'mil', n:'상병조련', han:'象兵調練', cost:480, req:['mil_form'],   tier:3, e:{eleUnlock:1, ele:0.15}, d:'코끼리 부대 편성 가능 (남방)'},
+{id:'mil_bow',  tree:'mil', n:'강노',     han:'强弩',     cost:260, req:['mil_iron'],   tier:2, e:{bow:0.18}, d:'쇠뇌 대량 배치. 궁병 전력 +18%'},
+{id:'mil_stir', tree:'mil', n:'등자',     han:'鐙子',     cost:280, req:['mil_iron'],   tier:2, e:{cav:0.18}, d:'등자와 편자. 기병 전력 +18%'},
+{id:'mil_form', tree:'mil', n:'진법',     han:'陣法',     cost:370, req:['mil_iron'],   tier:2, e:{power:0.10, tacBonus:0.15}, d:'팔진의 운용. 전 부대 전력 +10%, 전술 효과 +15%'},
+{id:'mil_heavy',tree:'mil', n:'개마중기', han:'鐵騎',     cost:940, req:['mil_stir','mil_form'], tier:3, e:{cav:0.22, armor:1}, d:'중장기병 편성. 기병 +22%, 방어구 상한 +1'},
+{id:'mil_siege',tree:'mil', n:'공성기',   han:'攻城機',   cost:760, req:['mil_form'],   tier:3, e:{siege:0.35}, d:'정란과 충차. 성벽 파괴 +35%'},
+{id:'mil_ship', tree:'mil', n:'조선술',   han:'造船術',   cost:440, req:['mil_iron'],   tier:2, e:{navy:0.18, shipCap:0.25}, d:'대형 함선 건조. 수군 +18%'},
+{id:'mil_pow',  tree:'mil', n:'화약',     han:'火藥',     cost:1080, req:['mil_siege'],  tier:3, e:{siege:0.25, fire:0.35}, d:'진천뢰와 화통. 공성·화계 위력 급증'},
+{id:'mil_gun',  tree:'mil', n:'조총',     han:'鳥銃',     cost:2210, req:['mil_pow'],    tier:4, e:{gunUnlock:1, gun:0.15}, d:'철포대 편성 가능. 훈련도가 곧 화력'},
+{id:'mil_iron_ship',tree:'mil',n:'철갑선',han:'鐵甲船',   cost:2380, req:['mil_ship','mil_pow'], tier:4, e:{navy:0.28, shipCap:0.3}, d:'장갑 전함. 해전 절대 우위'},
+{id:'mil_army', tree:'mil', n:'상비군제', han:'常備軍',   cost:1370, req:['mil_form'],   tier:3, e:{trainCap:15, upkeep:-0.15}, d:'직업군인화. 훈련 상한 +15, 유지비 -15%'},
+{id:'mil_ele',  tree:'mil', n:'상병조련', han:'象兵調練', cost:860, req:['mil_form'],   tier:3, e:{eleUnlock:1, ele:0.15}, d:'코끼리 부대 편성 가능 (남방)'},
 /* 외교 */
 {id:'dip_post', tree:'dip', n:'역참',     han:'驛站',     cost:140, req:[],             tier:1, e:{diplo:0.15, march:0.10}, d:'파발과 역마. 외교 성과 +15%'},
-{id:'dip_spy',  tree:'dip', n:'첩보망',   han:'諜報網',   cost:260, req:['dip_post'],   tier:2, e:{spy:0.30, counterSpy:0.2}, d:'각국 정보 열람. 첩보 +30%'},
-{id:'dip_trib', tree:'dip', n:'조공체제', han:'朝貢體制', cost:340, req:['dip_post'],   tier:2, e:{tributeIncome:0.25, relGain:0.2}, d:'조공 무역. 우호국에서 금 유입'},
-{id:'dip_trans',tree:'dip', n:'통역관',   han:'通譯',     cost:220, req:['dip_post'],   tier:2, e:{foreignDiplo:0.35}, d:'이문화 교섭 페널티 대폭 완화'},
-{id:'dip_wed',  tree:'dip', n:'혼인동맹', han:'婚姻同盟', cost:420, req:['dip_trib'],   tier:3, e:{allyStable:0.4, relGain:0.15}, d:'혼인으로 맺은 동맹은 잘 깨지지 않는다'},
-{id:'dip_sow',  tree:'dip', n:'이간지계', han:'離間之計', cost:480, req:['dip_spy'],    tier:3, e:{discord:0.35}, d:'적 장수 충성·세력 결속 붕괴 공작'},
-{id:'dip_hege', tree:'dip', n:'패자책봉', han:'霸者册封', cost:820, req:['dip_wed','dip_sow'], tier:4, e:{demandVassal:1, awe:8}, d:'약소국에 신속(臣屬)을 요구할 수 있다'},
+{id:'dip_spy',  tree:'dip', n:'첩보망',   han:'諜報網',   cost:300, req:['dip_post'],   tier:2, e:{spy:0.30, counterSpy:0.2}, d:'각국 정보 열람. 첩보 +30%'},
+{id:'dip_trib', tree:'dip', n:'조공체제', han:'朝貢體制', cost:390, req:['dip_post'],   tier:2, e:{tributeIncome:0.25, relGain:0.2}, d:'조공 무역. 우호국에서 금 유입'},
+{id:'dip_trans',tree:'dip', n:'통역관',   han:'通譯',     cost:250, req:['dip_post'],   tier:2, e:{foreignDiplo:0.35}, d:'이문화 교섭 페널티 대폭 완화'},
+{id:'dip_wed',  tree:'dip', n:'혼인동맹', han:'婚姻同盟', cost:760, req:['dip_trib'],   tier:3, e:{allyStable:0.4, relGain:0.15}, d:'혼인으로 맺은 동맹은 잘 깨지지 않는다'},
+{id:'dip_sow',  tree:'dip', n:'이간지계', han:'離間之計', cost:860, req:['dip_spy'],    tier:3, e:{discord:0.35}, d:'적 장수 충성·세력 결속 붕괴 공작'},
+{id:'dip_hege', tree:'dip', n:'패자책봉', han:'霸者册封', cost:2210, req:['dip_wed','dip_sow'], tier:4, e:{demandVassal:1, awe:8}, d:'약소국에 신속(臣屬)을 요구할 수 있다'},
 /* 문화·통치 */
 {id:'cul_law',  tree:'cul', n:'율령',     han:'律令',     cost:160, req:[],             tier:1, e:{orderCap:15, income:0.08}, d:'법제 정비. 치안 상한 +15'},
-{id:'cul_exam', tree:'cul', n:'과거제',   han:'科擧',     cost:300, req:['cul_law'],    tier:2, e:{searchRate:0.3, polGain:0.15}, d:'인재 탐색 성공률 +30%'},
-{id:'cul_acad', tree:'cul', n:'태학',     han:'太學',     cost:360, req:['cul_law'],    tier:2, e:{techRate:0.25}, d:'연구 속도 +25%'},
-{id:'cul_hist', tree:'cul', n:'사관제도', han:'史官',     cost:280, req:['cul_law'],    tier:2, e:{loyalGain:0.2, fameGain:0.25}, d:'공적 기록. 충성·명성 상승'},
-{id:'cul_relig',tree:'cul', n:'종교진흥', han:'宗敎振興', cost:420, req:['cul_hist'],   tier:3, e:{moodCap:12, riotGuard:0.25}, d:'민심 상한 +12, 반란 억제'},
-{id:'cul_mil',  tree:'cul', n:'무학당',   han:'武學堂',   cost:520, req:['cul_acad'],   tier:3, e:{growth:0.35, trainCap:8}, d:'장수 성장 속도 +35%'},
-{id:'cul_uni',  tree:'cul', n:'천하일통', han:'天下一統', cost:1000,req:['cul_relig','cul_mil','cul_exam'], tier:4, e:{power:0.08, income:0.12, loyalGain:0.25, fameGain:0.3}, d:'대일통의 명분. 모든 방면 상승'}
+{id:'cul_exam', tree:'cul', n:'과거제',   han:'科擧',     cost:340, req:['cul_law'],    tier:2, e:{searchRate:0.3, polGain:0.15}, d:'인재 탐색 성공률 +30%'},
+{id:'cul_acad', tree:'cul', n:'태학',     han:'太學',     cost:410, req:['cul_law'],    tier:2, e:{techRate:0.25}, d:'연구 속도 +25%'},
+{id:'cul_hist', tree:'cul', n:'사관제도', han:'史官',     cost:320, req:['cul_law'],    tier:2, e:{loyalGain:0.2, fameGain:0.25}, d:'공적 기록. 충성·명성 상승'},
+{id:'cul_relig',tree:'cul', n:'종교진흥', han:'宗敎振興', cost:760, req:['cul_hist'],   tier:3, e:{moodCap:12, riotGuard:0.25}, d:'민심 상한 +12, 반란 억제'},
+{id:'cul_mil',  tree:'cul', n:'무학당',   han:'武學堂',   cost:940, req:['cul_acad'],   tier:3, e:{growth:0.35, trainCap:8}, d:'장수 성장 속도 +35%'},
+{id:'cul_uni',  tree:'cul', n:'천하일통', han:'天下一統', cost:2700,req:['cul_relig','cul_mil','cul_exam'], tier:4, e:{power:0.08, income:0.12, loyalGain:0.25, fameGain:0.3}, d:'대일통의 명분. 모든 방면 상승'},
+/* 5단 — 極 (후반 목표 기술. 한 세력이 전부 갖기는 매우 어렵다) */
+{id:'civ_land', tree:'civ', n:'양전개혁',   han:'量田改革', cost:2400, req:['civ_irr'], tier:5,
+ e:{income:0.30, foodYield:0.20, orderCap:10, ruleEase:0.35}, d:'전국 토지·호구 재조사. 수입 +30%, 수확 +20%, 통치 부담 대폭 완화'},
+{id:'mil_rocket', tree:'mil', n:'신기전',   han:'神機箭', cost:2600, req:['mil_gun','mil_siege'], tier:5,
+ e:{bow:0.30, siege:0.35, fire:0.4, awe:6}, d:'다발 화전. 궁병 +30%, 공성 +35%, 화계 강화, 적 사기 저하'},
+{id:'dip_world', tree:'dip', n:'사대교린',   han:'事大交隣', cost:2200, req:['dip_hege'], tier:5,
+ e:{diplo:0.4, relGain:0.5, allyStable:0.4, coalitionGuard:0.5}, d:'천하의 외교 질서를 쥔다. 반패권 연합 결성 저항 +50%'},
+{id:'cul_order', tree:'cul', n:'중앙집권',   han:'中央集權', cost:2600, req:['cul_uni'], tier:5,
+ e:{ruleEase:0.5, loyalGain:0.4, orderCap:20, power:0.06}, d:'광역 통치의 완성. 통치 부담 절감, 충성·치안 상한 상승'}
 ];
 const TECH_BY_ID = {}; TECHS.forEach(t => TECH_BY_ID[t.id] = t);
 const TREES = {civ:{n:'내정',han:'內政',c:'#7ab87a'}, mil:{n:'군사',han:'軍事',c:'#c96b5a'}, dip:{n:'외교',han:'外交',c:'#6b9ec9'}, cul:{n:'문화',han:'文化',c:'#c9a86b'}};
@@ -114,15 +123,42 @@ const REGION_TECH_AFFINITY = {
 
 /* ---------- 관직 ---------- */
 const RANKS = [
-  {id:0, n:'무관(無官)',   merit:0,    cmd:6000,  pay:6},
-  {id:1, n:'교위(校尉)',   merit:80,   cmd:9000,  pay:11},
-  {id:2, n:'장군(將軍)',   merit:220,  cmd:13000, pay:18},
-  {id:3, n:'태수(太守)',   merit:450,  cmd:18000, pay:28},
-  {id:4, n:'도독(都督)',   merit:800,  cmd:24000, pay:40},
-  {id:5, n:'대장군(大將軍)',merit:1400, cmd:32000, pay:58},
-  {id:6, n:'승상(丞相)',   merit:2200, cmd:40000, pay:80},
+  {id:0, n:'무관(無官)',   merit:0,    cmd:6000,  pay:4},
+  {id:1, n:'교위(校尉)',   merit:80,   cmd:9000,  pay:7},
+  {id:2, n:'장군(將軍)',   merit:220,  cmd:13000, pay:12},
+  {id:3, n:'태수(太守)',   merit:450,  cmd:18000, pay:18},
+  {id:4, n:'도독(都督)',   merit:800,  cmd:24000, pay:26},
+  {id:5, n:'대장군(大將軍)',merit:1400, cmd:32000, pay:38},
+  {id:6, n:'승상(丞相)',   merit:2200, cmd:40000, pay:55},
   {id:7, n:'군주(君主)',   merit:9999, cmd:60000, pay:0}
 ];
+
+/* ---------- 칭호(稱號) ---------- */
+const TITLES = [
+  {id:'t_duel',  n:'天下無雙', d:'일기토 10승',        e:{duel:0.12, awe:3},   cond:g=>g.st && g.st.duelWin >= 10},
+  {id:'t_duel5', n:'一騎當千', d:'일기토 5승',          e:{duel:0.07},          cond:g=>g.st && g.st.duelWin >= 5},
+  {id:'t_tiger', n:'虎將',     d:'전투 15승',           e:{power:0.06},         cond:g=>g.st && g.st.battleWin >= 15},
+  {id:'t_gen',   n:'名將',     d:'전투 8승',            e:{power:0.04},         cond:g=>g.st && g.st.battleWin >= 8},
+  {id:'t_wall',  n:'鐵壁',     d:'수성 5승',            e:{defend:0.10},        cond:g=>g.st && g.st.defWin >= 5},
+  {id:'t_sage',  n:'臥龍',     d:'계략 12회 성공',      e:{plot:0.10},          cond:g=>g.st && g.st.plotWin >= 12},
+  {id:'t_plot',  n:'智謀',     d:'계략 6회 성공',       e:{plot:0.06},          cond:g=>g.st && g.st.plotWin >= 6},
+  {id:'t_civ',   n:'名宰',     d:'내정 60회',           e:{agri:0.15, comm:0.15}, cond:g=>g.st && g.st.civAct >= 60},
+  {id:'t_rec',   n:'伯樂',     d:'등용 8명 성공',       e:{recruit:0.15},       cond:g=>g.st && g.st.recruit >= 8},
+  {id:'t_uni',   n:'覇者',     d:'20성 이상 세력의 군주', e:{awe:5, power:0.04},
+   cond:g=>g.rank === 7 && g.faction && S.factions[g.faction] && PROVINCES.filter(p=>p.owner===g.faction).length >= 20}
+];
+
+/* ---------- 난이도 ---------- */
+const DIFFS = {
+  easy:  {n:'초급(初)', d:'AI 수입·병력 80%, 나의 수입 120%. 느긋하게 천하를 보시오.',
+          aiGold:0.8, aiTroop:0.85, aiTech:0.8, myGold:1.2, aiAggr:1.25, coalition:1.4},
+  normal:{n:'중급(中)', d:'표준. 균형 잡힌 난세.',
+          aiGold:1.0, aiTroop:1.0, aiTech:1.0, myGold:1.0, aiAggr:1.0, coalition:1.0},
+  hard:  {n:'상급(上)', d:'AI 수입 125%, 기술 120%. 연합이 빠르게 결성된다.',
+          aiGold:1.25, aiTroop:1.1, aiTech:1.2, myGold:1.0, aiAggr:0.88, coalition:0.8},
+  chaos: {n:'최상급(亂)', d:'AI 수입 160%, 병력 125%. 천하가 당신을 노린다.',
+          aiGold:1.6, aiTroop:1.25, aiTech:1.4, myGold:0.9, aiAggr:0.78, coalition:0.6}
+};
 
 /* ---------- 외교 상태 ---------- */
 const DIPLO = {war:{n:'교전',c:'#c0392b'}, none:{n:'중립',c:'#7f8c8d'}, truce:{n:'불가침',c:'#2980b9'}, ally:{n:'동맹',c:'#27ae60'}, vassal:{n:'신속',c:'#8e44ad'}};
@@ -194,6 +230,19 @@ const HISTORY_EVENTS = [
    cond:s=>{const g=genByName('오다 노부나가'); return g&&g.faction&&factionHasTech(g.faction,'mil_gun');},
    text:'노부나가가 철포대를 삼단으로 나누어 끊임없이 쏘는 법을 고안했다.',
    run:s=>{ const g=genByName('오다 노부나가'); if(g&&g.faction){ S.factions[g.faction].bonus.gun=(S.factions[g.faction].bonus.gun||0)+0.2; } }},
+  {id:'h_coalition', n:'반패권 연합(反霸權聯合)', once:1,
+   cond:s=>{const big=Object.values(S.factions).filter(f=>f.alive).sort((a,b)=>PROVINCES.filter(p=>p.owner===b.id).length-PROVINCES.filter(p=>p.owner===a.id).length)[0];
+     return big && PROVINCES.filter(p=>p.owner===big.id).length >= 12;},
+   text:'천하의 제후들이 한자리에 모여 맹약을 맺었다. 「가장 큰 자를 함께 친다.」 이제 홀로 커지는 것은 위험한 일이 되었다.',
+   run:s=>{ S.flags = S.flags || {}; S.flags.coalitionEra = 1; }},
+  {id:'h_yongbi', n:'용병의 시대(傭兵)', once:1,
+   cond:s=>s.turn > 60,
+   text:'긴 전란으로 떠도는 군졸이 넘쳐난다. 금만 있으면 하룻밤에 군대를 살 수 있는 시대가 왔다.',
+   run:s=>{ S.flags = S.flags || {}; S.flags.mercCheap = 1; }},
+  {id:'h_oath', n:'의형제의 결의(義兄弟)', once:1,
+   cond:s=>{const g=genByName(S.player.gen||''); return g && g.bonds && g.bonds.length >= 2;},
+   text:'피를 나누지 않았어도 형제가 되는 일이 있다. 그 맹세는 어떤 성벽보다 단단하다.',
+   run:s=>{}},
   {id:'h_bachdang', n:'바익당강의 말뚝(白藤江)', once:1,
    cond:s=>{const g=genByName('쩐흥다오')||genByName('응오꾸옌'); return g&&g.faction&&PROV_BY_ID['daila'].owner===g.faction;},
    text:'강바닥에 쇠말뚝을 박아두고 조수를 기다린다. 북방 함대는 여기서 끝난다.',

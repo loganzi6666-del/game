@@ -6,8 +6,11 @@
 const S = {
   year: 190, month: 1, turn: 1,
   factions: {}, gens: [], genIdx: {}, player: {mode:'lord', faction:null, gen:null, fame:0, merit:0},
-  log: [], histDone: {}, pending: [], selected: null, gameOver: null, opts: {}
+  log: [], histDone: {}, pending: [], selected: null, gameOver: null, opts: {},
+  diff: 'normal', bonds: [], coalition: null, chron: [], annals: [], flags: {}, cheat: {}
 };
+function DF() { return DIFFS[S.diff] || DIFFS.normal; }
+function isMine(fid) { return fid === S.player.faction; }
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const ri  = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
@@ -33,7 +36,7 @@ function initWorld() {
     const f = Object.assign({}, fd);
     f.gold = 0; f.food = 0; f.alive = true;
     f.tp = {civ:0, mil:0, dip:0, cul:0};
-    f.techs = []; f.rel = {}; f.bonus = {}; f.fame = 0; f.vassalOf = null;
+    f.techs = []; f.rel = {}; f.bonus = {}; f.fame = 0; f.vassalOf = null; f.tax = 1;
     f.prov = fd.prov.slice();
     S.factions[f.id] = f;
   });
@@ -74,6 +77,10 @@ function initWorld() {
     f.gold = 1400 + f.prov.length * 750; f.food = 9000 + f.prov.length * 5200;
     f.tp = {civ:70, mil:70, dip:55, cul:55};   // 개막 연구점 — 1단 기술을 바로 고를 수 있다
   });
+  S.bonds = []; S.coalition = null; S.chron = []; S.annals = []; S.flags = {}; S.cheat = {};
+  BOND_PRESET.forEach(([a, b, t]) => addBond(a, b, t));
+  Object.values(S.factions).forEach(f => { f.lastIncome = projectIncome(f); });
+  snapChron();
 }
 
 function setupProv(p, owned, isCap) {
@@ -91,7 +98,7 @@ function setupProv(p, owned, isCap) {
   p.armor  = owned ? ri(1, 2) : 1;
   p.horses = Math.round(p.troops * (p.t === 'plain' || p.t === 'plateau' ? 0.22 : 0.10));
   p.ships  = p.port ? Math.round(p.troops * 0.18) : 0;
-  p.gov = null; p.unrest = 0;
+  p.gov = null; p.unrest = 0; p.settle = 0;
   if (!owned) { p.wall = Math.round(p.w * 0.35); }
 }
 
@@ -102,7 +109,8 @@ function mkGen(row) {
     skills: row[7] ? row[7].split(',') : [], apt: row[8], age: row[9], art: row[10],
     ambition: clamp(30 + (h % 70), 5, 98), faith: clamp(20 + ((h >> 7) % 80), 5, 99),
     faction: null, loc: null, rank: 0, merit: 0, loyal: 0, exp: 0, status: 'ok', hurt: 0,
-    acted: false, army: null, fame: Math.round((row[2] + row[3] + row[4] + row[5] + row[6]) / 5), bond: 0
+    acted: false, army: null, fame: Math.round((row[2] + row[3] + row[4] + row[5] + row[6]) / 5), bond: 0,
+    st: {duelWin:0, battleWin:0, defWin:0, plotWin:0, civAct:0, recruit:0}, title: null, bonds: []
   });
 }
 function applyFix(g) { const f = FIX[g.name]; if (f) Object.assign(g, f); return g; }
@@ -135,7 +143,57 @@ function sfx(g, key) {
   let v = 0;
   if (!g) return 0;
   g.skills.forEach(s => { const sk = SKILLS[s]; if (sk && sk.e[key]) v += sk.e[key]; });
+  if (g.title && g.title.e && g.title.e[key]) v += g.title.e[key];
   return v;
+}
+function bump(g, k, n) { if (!g) return; if (!g.st) g.st = {duelWin:0,battleWin:0,defWin:0,plotWin:0,civAct:0,recruit:0};
+  g.st[k] = (g.st[k] || 0) + (n || 1); checkTitle(g); }
+function checkTitle(g) {
+  for (const t of TITLES) {
+    let ok = false; try { ok = t.cond(g); } catch (e) { ok = false; }
+    if (ok) {
+      if (!g.title || g.title.id !== t.id) {
+        const had = !!g.title;
+        g.title = {id:t.id, n:t.n, e:t.e};
+        logMsg(`【칭호】${g.name}이 「${t.n}」의 이름을 얻었다. (${t.d})`, 'good', g.faction);
+      }
+      return;
+    }
+  }
+}
+
+/* ---------- 인물 관계(의형제·혈연·라이벌) ---------- */
+const BOND_PRESET = [
+  ['유비','관우','oath'],['유비','장비','oath'],['관우','장비','oath'],
+  ['마초','마대','kin'],['조조','조인','kin'],['조조','조홍','kin'],
+  ['원소','원담','kin'],['원소','원희','kin'],['원소','원상','kin'],
+  ['손책','손권','kin'],['근초고왕','근구수왕','kin'],['연개소문','연남생','kin'],
+  ['김유신','김흠순','kin'],['광개토대왕','장수왕','kin'],['사나다 유키타카','사나다 마사유키','kin'],
+  ['다케다 신겐','다케다 가쓰요리','kin'],['시마즈 요시히사','시마즈 요시히로','kin'],
+  ['시마즈 요시히사','시마즈 도시히사','kin'],['시마즈 요시히사','시마즈 이에히사','kin'],
+  ['모리 모토나리','깃카와 모토하루','kin'],['모리 모토나리','고바야카와 다카카게','kin'],
+  ['모리 모토나리','모리 다카모토','kin'],['호조 우지야스','호조 우지마사','kin'],
+  ['딘보린','딘리엔','kin'],['정성공','정지룡','kin'],['정성공','정경','kin'],
+  ['체 봉 응아','체 만','kin'],['카밧치 아슬라미','카밧치 마로아','kin'],
+  ['전위','허저','oath'],['하후돈','하후연','kin'],['을지문덕','양만춘','oath'],
+  ['계백','성충','oath'],['진흥왕','거칠부','mentor'],['제갈량','방통','rival'],
+  ['우에스기 겐신','다케다 신겐','rival'],['오다 노부나가','다케다 신겐','rival'],
+  ['조조','유비','rival'],['여포','장비','rival'],['관우','황충','rival'],
+  ['마초','허저','rival'],['시마즈 요시히로','다치바나 무네시게','rival'],
+  ['김유신','계백','rival'],['광개토대왕','근초고왕','rival'],['딘보린','체 봉 응아','rival'],
+  ['정성공','시랑','rival'],['샤쿠샤인','다테 마사무네','rival']
+];
+function addBond(a, b, t) {
+  if (!a || !b || a === b) return;
+  if (S.bonds.some(x => (x.a === a && x.b === b) || (x.a === b && x.b === a))) return;
+  S.bonds.push({a, b, t});
+  const ga = genByName(a), gb = genByName(b);
+  if (ga) { ga.bonds = ga.bonds || []; ga.bonds.push({n:b, t}); }
+  if (gb) { gb.bonds = gb.bonds || []; gb.bonds.push({n:a, t}); }
+}
+function bondOf(a, b) {
+  const x = S.bonds.find(v => (v.a === a && v.b === b) || (v.a === b && v.b === a));
+  return x ? x.t : null;
 }
 function aptOf(g, type) { return g ? (g.apt[UNITS[type].apt] || 'B') : 'C'; }
 function rankOf(g) { return RANKS[clamp(g.rank, 0, 7)]; }
@@ -159,13 +217,122 @@ function factionPower(fid) {
   return Math.round(v);
 }
 
-/* ---------- 경제 / 정산 ---------- */
-function provIncome(p) {
-  const fid = p.owner;
-  const gov = p.gov ? genByName(p.gov) : null;
-  const govM = gov ? 1 + (gov.pol - 55) / 260 + sfx(gov, 'income') : 1;
-  return Math.round(p.comm * (0.45 + p.order / 100 * 0.55) * 1.5 * (1 + fx(fid, 'income')) * govM);
+/* ---------- 세율(稅率) ---------- */
+const TAX_RATES = [
+  {id:0, n:'경세(輕稅)', r:0.70, mood:+1.6, d:'세를 낮춘다. 수입 70%, 민심이 오른다'},
+  {id:1, n:'보통(常稅)', r:1.00, mood:+0.2, d:'표준 세율. 수입 100%'},
+  {id:2, n:'중세(重稅)', r:1.35, mood:-1.4, d:'세를 무겁게. 수입 135%, 민심이 내린다'},
+  {id:3, n:'가혹(苛稅)', r:1.70, mood:-3.2, d:'짜낸다. 수입 170%, 민심 급락·민란 위험'}
+];
+function taxOf(f) { return TAX_RATES[clamp(f && f.tax !== undefined ? f.tax : 1, 0, 3)]; }
+
+/* ---------- 통치 부담(統治負擔) ----------
+   영지가 넓어지면 관료가 부족해 치안·민심이 흔들리고 군비가 더 든다.
+   율령·과거제·양전개혁·중앙집권으로 완화한다. */
+function strain(fid) {
+  const n = factionProv(fid).length;
+  if (n <= 11) return 0;
+  const ease = Math.min(0.85, fx(fid, 'ruleEase') + fx(fid, 'orderCap') / 260);
+  return (n - 11) * 0.115 * (1 - ease);
 }
+function annal(m, kind) {
+  S.annals.unshift({y:S.year, mo:S.month, m, kind: kind || ''});
+  if (S.annals.length > 200) S.annals.pop();
+}
+function snapChron() {
+  const row = {y:S.year, f:{}};
+  Object.values(S.factions).forEach(f => { const n = factionProv(f.id).length; if (n) row.f[f.id] = n; });
+  S.chron.push(row);
+  if (S.chron.length > 220) S.chron.shift();
+}
+
+/* ---------- 반패권 연합(反霸權聯合) ----------
+   한 세력이 지나치게 커지면 나머지가 맹약을 맺고 함께 친다. */
+function coalitionCheck() {
+  const total = PROVINCES.length;
+  const list = Object.values(S.factions).filter(f => f.alive)
+    .map(f => ({f, n:factionProv(f.id).length})).sort((a, b) => b.n - a.n);
+  if (!list.length) return;
+  const top = list[0];
+  const thr = Math.max(7, Math.round(total * 0.145 * DF().coalition));
+  if (S.coalition && S.coalition.target) {
+    const t = fOf(S.coalition.target);
+    const n = t && t.alive ? factionProv(t.id).length : 0;
+    if (!t || !t.alive || n < thr - 2) {
+      logMsg(`【연합 해산】${t ? t.name : '패자'}를 향한 맹약이 풀렸다.`, 'big');
+      annal(`반패권 연합 해산`, 'dip');
+      S.coalition = null;
+    } else {
+      // 유지 중 — 매달 관계 악화와 참전 압박
+      S.coalition.members = S.coalition.members.filter(m => fOf(m) && fOf(m).alive);
+      S.coalition.members.forEach(m => {
+        const f = fOf(m); if (!f) return;
+        const r = f.rel[t.id]; if (!r) return;
+        r.v = clamp(r.v - 2, -100, 100); t.rel[m].v = r.v;
+        if (r.state !== 'war' && Math.random() < 0.25) {
+          r.state = 'war'; t.rel[m].state = 'war';
+          logMsg(`【연합】${f.name}이 맹약에 따라 ${t.name}에 출병한다!`, 'bad');
+        }
+      });
+      return;
+    }
+  }
+  if (top.n < thr) return;
+  const guard = fx(top.f.id, 'coalitionGuard');
+  if (Math.random() < guard * 0.6) return;
+  const members = list.slice(1).filter(x => x.n >= 1 && relation(x.f.id, top.f.id) !== 'vassal').map(x => x.f.id);
+  if (members.length < 3) return;
+  S.coalition = {target: top.f.id, members, since: S.turn};
+  members.forEach(m => {
+    const f = fOf(m); const r = f.rel[top.f.id];
+    r.v = clamp(r.v - 30, -100, 100); top.f.rel[m].v = r.v;
+    if (Math.random() < 0.55) { r.state = 'war'; top.f.rel[m].state = 'war'; }
+    members.forEach(o => { if (o !== m) { const rr = f.rel[o]; if (rr) { rr.v = clamp(rr.v + 25, -100, 100);
+      if (rr.state === 'war' && Math.random() < 0.7) { rr.state = 'none'; fOf(o).rel[m].state = 'none'; } } } });
+  });
+  logMsg(`【반패권 연합】천하의 제후 ${members.length}세력이 ${top.f.name} 타도를 맹약했다!`, 'big');
+  annal(`${top.f.name} 타도 반패권 연합 결성 (${members.length}세력)`, 'war');
+  S.pending.push({type:'coalition', title:'反霸權聯合 — 반패권 연합',
+    text:`${top.f.name}이 ${top.n}개 주군을 차지하자, 남은 제후들이 한자리에 모여 맹약을 맺었다.<br>
+      「홀로 커진 자를 함께 친다.」<br><br>연합 참가 — ${members.map(m => fOf(m).name).join(' · ')}`});
+}
+function inCoalitionVs(aid, did) {
+  if (!S.coalition) return false;
+  return S.coalition.target === did && S.coalition.members.indexOf(aid) >= 0;
+}
+
+/* ---------- 경제 / 정산 ---------- */
+/* 도시 세수 명세 — 상업세·인구세(丁稅)·농지세 + 교역 보정 */
+function provTaxParts(p) {
+  const fid = p.owner;
+  if (!fid) return {comm:0, head:0, land:0, trade:1, total:0};
+  const f = fOf(fid);
+  const gov = p.gov ? genByName(p.gov) : null;
+  const govM = gov ? 1 + (gov.pol - 55) / 240 + sfx(gov, 'income') : 1;
+  const dm = (isMine(fid) ? DF().myGold : DF().aiGold) * (p.settle > 0 ? 0.45 : 1);
+  const rate = taxOf(f).r;
+  const comm = p.comm * 1.35 * (0.45 + p.order / 190);        // 상업세 — 치안이 곧 징세력
+  const head = p.pop * 1.20 * (0.5 + p.mood / 200);           // 인구세 — 민심이 곧 납세
+  const land = p.agri * 0.34;                                  // 농지세
+  const trade = 1 + (p.port ? 0.12 : 0) + (p.big ? 0.14 : 0) + fx(fid, 'income');
+  const m = rate * trade * govM * dm;
+  return {
+    comm: Math.round(comm * m), head: Math.round(head * m), land: Math.round(land * m),
+    trade, rate, govM: govM, settle: p.settle > 0,
+    total: Math.round((comm + head + land) * m)
+  };
+}
+function provIncome(p) { return provTaxParts(p).total; }
+/* 아직 정산 전(개막·거병 직후)에도 명세를 보여주기 위한 예상 계산 */
+function projectIncome(f) {
+  const ps = factionProv(f.id);
+  const gold = ps.reduce((s2, p) => s2 + provIncome(p), 0);
+  const payDue = factionGens(f.id).filter(g => g.status === 'ok').reduce((s2, g) => s2 + rankOf(g).pay, 0);
+  const upkeep = Math.round(ps.reduce((s2, p) => s2 + p.troops * 0.013 * (1 + fx(f.id, 'upkeep')), 0) * (1 + strain(f.id) * 0.9));
+  return {gold, pay:payDue, payDue, upkeep, net: gold - payDue - upkeep, food:0,
+    eat: Math.round(ps.reduce((s2, p) => s2 + p.troops * 0.02, 0)), tax: taxOf(f).n, strain: strain(f.id), proj:1};
+}
+
 function provHarvest(p) {
   const fid = p.owner;
   const gov = p.gov ? genByName(p.gov) : null;
@@ -184,32 +351,47 @@ function settleMonth() {
       gold += provIncome(p);
       if (S.month === 6 || S.month === 10) food += provHarvest(p);
       // 병사 식량 소모
-      up += p.troops * 0.016 * (1 + fx(f.id, 'troopFood'));
-      // 자연 변동
-      p.order = clamp(p.order - (p.gov ? 0.4 : 1.6) + (p.mood > 70 ? 0.5 : 0), 0, 100 + fx(f.id,'orderCap'));
-      p.mood = clamp(p.mood - 0.5 + (p.order > 70 ? 0.8 : 0) - (p.troops > p.pop * 40 ? 1.2 : 0), 0, 100 + fx(f.id,'moodCap'));
+      up += p.troops * 0.020 * (1 + fx(f.id, 'troopFood'));
+      if (p.settle > 0) p.settle--;
+      // 자연 변동 + 통치 부담
+      const st = strain(f.id);
+      p.order = clamp(p.order - (p.gov ? 0.4 : 1.6) - st + (p.mood > 70 ? 0.5 : 0), 0, 100 + fx(f.id,'orderCap'));
+      p.mood = clamp(p.mood - 0.5 - st * 0.7 + (p.order > 70 ? 0.8 : 0) - (p.troops > p.pop * 40 ? 1.2 : 0), 0, 100 + fx(f.id,'moodCap'));
       const pc = capOf(p, 'pop');
       p.pop = clamp(Math.round(p.pop + (p.mood - 45) * 0.12 * (pc > p.pop ? 1 : -0.3)), 20, pc);
       if (p.mood < 22 && Math.random() < 0.12) { p.unrest++; if (p.unrest > 2) revolt(p); } else p.unrest = Math.max(0, p.unrest - 1);
     });
-    const pay = factionGens(f.id).reduce((s, g) => s + rankOf(g).pay, 0);
-    const upkeep = Math.round(ps.reduce((s, p) => s + p.troops * 0.006 * (1 + fx(f.id,'upkeep')), 0));
+    // 봉록 — 국고가 부족하면 체불되고 충성이 떨어진다 (파산으로 마비되지 않게)
+    const gens = factionGens(f.id).filter(g => g.status === 'ok');
+    const payDue = gens.reduce((s, g) => s + rankOf(g).pay, 0);
+    const upkeep = Math.round(ps.reduce((s, p) => s + p.troops * 0.013 * (1 + fx(f.id, 'upkeep')), 0)
+      * (1 + strain(f.id) * 0.9));
+    const cash = f.gold + gold;
+    const payable = Math.max(0, Math.floor(cash * 0.55) - upkeep);
+    const pay = Math.min(payDue, payable);
+    const unpaid = payDue - pay;
     f.gold += Math.round(gold - pay - upkeep);
     f.food += Math.round(food - up);
+    if (unpaid > 0) {
+      const share = unpaid / Math.max(1, payDue);
+      gens.forEach(g => { if (g.rank !== 7) g.loyal = clamp(g.loyal - 1.4 * share, 0, 100); });
+      if (isMine(f.id) && S.turn % 3 === 0)
+        logMsg(`국고가 모자라 봉록 ${Math.round(unpaid)}금이 체불되었다. 장수들의 충성이 흔들린다.`, 'bad', f.id);
+    }
+    // 세율에 따른 민심 변동
+    const tx = taxOf(f);
+    ps.forEach(p => { p.mood = clamp(p.mood + tx.mood, 0, 100 + fx(f.id, 'moodCap')); });
     const fCap = Math.round((15000 + 7000 * ps.length) * (1 + fx(f.id, 'foodCap')));
     if (f.food > fCap) f.food = fCap;
-    f.lastIncome = {gold: Math.round(gold), pay, upkeep, food: Math.round(food), eat: Math.round(up)};
-    if (f.food < 0) { // 기아
-      const ps2 = factionProv(f.id);
-      ps2.forEach(p => { p.troops = Math.round(p.troops * 0.93); p.mood = clamp(p.mood - 4, 0, 100); });
-      f.food = 0;
-      if (f.id === S.player.faction) logMsg('식량이 바닥나 병사들이 굶주린다! 병력이 이탈한다.', 'bad');
-    }
-    if (f.gold < 0) { f.gold = 0; factionGens(f.id).forEach(g => g.loyal = clamp(g.loyal - 1, 0, 100)); }
+    f.lastIncome = {gold: Math.round(gold), pay: Math.round(pay), payDue: Math.round(payDue),
+      upkeep, food: Math.round(food), eat: Math.round(up), net: Math.round(gold - pay - upkeep),
+      tax: tx.n, strain: strain(f.id)};
+    if (S.cheat && S.cheat.gold && isMine(f.id)) { f.gold = Math.max(f.gold, 999999); f.food = Math.max(f.food, 999999); }
+    if (S.cheat && S.cheat.fastTech && isMine(f.id)) ['civ','mil','dip','cul'].forEach(k => f.tp[k] += 2000);
     // 연구
     let rp = ps.reduce((s, p) => s + p.comm * 0.03 + p.pop * 0.01, 0);
     const scholars = factionGens(f.id).filter(g => g.int >= 80).length;
-    rp *= 1 + scholars * 0.05 + fx(f.id, 'techRate') + fx(f.id, 'tech');
+    rp *= (1 + scholars * 0.05 + fx(f.id, 'techRate') + fx(f.id, 'tech')) * (isMine(f.id) ? 1 : DF().aiTech);
     if (factionHasTech(f.id, 'cul_acad')) rp *= 1.1;
     const share = {civ:0.28, mil:0.30, dip:0.18, cul:0.24};
     Object.keys(share).forEach(k => f.tp[k] += rp * share[k]);
@@ -235,6 +417,7 @@ function killFaction(fid) {
   f.alive = false;
   factionGens(fid).forEach(g => { g.faction = null; g.loyal = 0; g.rank = 0; g.army = null; });
   logMsg(`【멸망】${f.name} 세력이 역사에서 사라졌다.`, 'big');
+  annal(`${f.name} 멸망`, 'fall');
   if (S.player.faction === fid && S.player.mode === 'lord') S.gameOver = {win:false, reason:`${f.name}는 멸망했다.`};
 }
 
@@ -271,6 +454,7 @@ function succession(fid) {
   if (!cand.length) { killFaction(fid); return; }
   const n = cand[0]; f.ruler = n.name; n.rank = 7; n.loyal = 100;
   logMsg(`【계승】${f.name}의 새 군주로 ${n.name}이 올랐다.`, 'big');
+  annal(`${f.name} 군주 ${n.name} 계승`, 'lord');
   factionGens(fid).forEach(g => { if (g !== n) g.loyal = clamp(g.loyal - ri(4, 16) + Math.round(n.cha / 12), 0, 100); });
 }
 
@@ -348,19 +532,20 @@ function loyaltyMonth() {
 /* ---------- 명령 ---------- */
 const ORDERS = {
   // 내정
-  farm:   {n:'개간',   cat:'civ', gold:150, need:'pol', d:'농업을 늘린다 (식량 생산)'},
-  trade:  {n:'상업',   cat:'civ', gold:180, need:'pol', d:'상업을 늘린다 (금 수입)'},
-  water:  {n:'치수',   cat:'civ', gold:140, need:'pol', d:'치수 공사로 수해를 막고 농지를 안정시킨다'},
-  wall:   {n:'축성',   cat:'civ', gold:210, need:'pol', d:'성벽을 보수·증축한다'},
+  farm:   {n:'개간',   cat:'civ', gold:120, need:'pol', d:'농업을 늘린다 (식량 생산)'},
+  trade:  {n:'상업',   cat:'civ', gold:140, need:'pol', d:'상업을 늘린다 (금 수입)'},
+  water:  {n:'치수',   cat:'civ', gold:110, need:'pol', d:'치수 공사로 수해를 막고 농지를 안정시킨다'},
+  wall:   {n:'축성',   cat:'civ', gold:170, need:'pol', d:'성벽을 보수·증축한다'},
   patrol: {n:'순찰',   cat:'civ', gold:55,  need:'pol', d:'치안을 회복한다'},
   relief: {n:'구휼',   cat:'civ', gold:0,   food:700, need:'cha', d:'창고를 열어 민심을 얻는다'},
   // 군사
-  levy:   {n:'징병',   cat:'mil', gold:180, need:'cha', d:'병력을 모집한다 (인구·민심 소모)'},
-  drill:  {n:'훈련',   cat:'mil', gold:120, need:'lead', d:'훈련도를 올린다 — 전투력의 핵심'},
+  levy:   {n:'징병',   cat:'mil', gold:140, need:'cha', d:'병력을 모집한다 (인구·민심 소모)'},
+  drill:  {n:'훈련',   cat:'mil', gold:100, need:'lead', d:'훈련도를 올린다 — 전투력의 핵심'},
   smith:  {n:'무기생산',cat:'mil', gold:380, need:'pol', d:'무기 등급을 올린다'},
   armory: {n:'방어구', cat:'mil', gold:380, need:'pol', d:'방어구 등급을 올린다'},
   horse:  {n:'군마구입',cat:'mil', gold:280, need:'pol', d:'군마를 확보한다 (기병 편성)'},
   ship:   {n:'조선',   cat:'mil', gold:330, need:'pol', d:'전선을 건조한다 (수군 편성)'},
+  merc:   {n:'용병고용',cat:'mil', gold:0,   need:'cha', d:'금으로 즉시 병력을 산다 (훈련도는 낮다)', dyn:1},
   // 인사
   recruit:{n:'등용',   cat:'per', gold:100, need:'cha', d:'재야 인재를 등용한다'},
   search: {n:'인재탐색',cat:'per', gold:80, need:'int', d:'숨은 인재를 찾는다'},
@@ -374,6 +559,7 @@ const ORDERS = {
 };
 
 function orderCost(o) { return ORDERS[o] ? ORDERS[o].gold : 0; }
+function mercCost() { return (S.flags && S.flags.mercCheap) ? 3.2 : 4.6; }
 
 function doOrder(g, o, arg) {
   const f = fOf(g.faction); if (!f) return {ok:false, m:'소속이 없다'};
@@ -404,7 +590,8 @@ function doOrder(g, o, arg) {
       p.order = clamp(p.order + v, 0, 100 + fx(f.id, 'orderCap')); m = `${p.name} 치안 +${v} (${Math.round(p.order)})`; break; }
     case 'relief': { const v = Math.round((6 + base * 0.12) * (1 + sfx(g, 'virtue')));
       p.mood = clamp(p.mood + v, 0, 100 + fx(f.id, 'moodCap')); m = `${p.name} 민심 +${v} (${Math.round(p.mood)})`; break; }
-    case 'levy': { const cap = Math.round(p.pop * 45);
+    case 'levy': { if (p.settle > 0) { f.gold += def.gold; return {ok:false, m:`${p.name}은 전후 수습 중이다 (${p.settle}개월)`}; }
+      const cap = Math.round(p.pop * 26);
       let v = Math.round((p.pop * 1.6 + base * 12) * (1 + sfx(g, 'levy') + fx(f.id, 'levy')) * (0.5 + p.mood / 150));
       v = Math.min(v, Math.max(0, cap - p.troops));
       p.troops += v; p.mood = clamp(p.mood - (4 - sfx(g, 'levy') * 3), 0, 100);
@@ -426,6 +613,17 @@ function doOrder(g, o, arg) {
     case 'ship': { if (!p.port) { f.gold += def.gold; return {ok:false, m:'항구가 없는 도시다'}; }
       const v = Math.round((120 + base * 2.4) * (1 + sfx(g, 'ship') + fx(f.id, 'shipCap'))); p.ships += v;
       m = `${p.name} 전선 +${v} (${p.ships})`; break; }
+    case 'merc': {
+      const unit = mercCost();
+      const want = Math.max(0, Math.min(parseInt(arg) || 0, Math.floor(f.gold / unit), rankOf(g).cmd));
+      if (want < 100) { return {ok:false, m:'금이 부족하거나 수량이 너무 적다'}; }
+      f.gold -= want * unit;
+      const before = p.troops;
+      p.train = Math.round((p.train * before + 38 * want) / Math.max(1, before + want));
+      p.troops += want;
+      p.mood = clamp(p.mood - 1, 0, 100);
+      m = `${p.name}에 용병 ${want.toLocaleString()}명 고용 (금 ${(want * unit).toLocaleString()}) · 훈련도 ${Math.round(p.train)}`;
+      break; }
     case 'search': { const cands = S.gens.filter(x => !x.faction && x.status === 'ok' && x.loc === p.id && !x.found);
       if (!cands.length) { m = '이 고을에는 더 찾을 인재가 없다'; break; }
       const pr = 0.34 + g.int / 260 + sfx(g, 'order') * 0.1 + fx(f.id, 'searchRate');
@@ -470,6 +668,9 @@ function doOrder(g, o, arg) {
       else { m = '방화에 실패하고 첩자를 잃었다'; } break; }
   }
   g.acted = true; g.exp += 8; g.merit += 6 + Math.round(base / 14);
+  if (def.cat === 'civ') bump(g, 'civAct');
+  if (o === 'recruit' && /휘하에 들어왔다/.test(m)) bump(g, 'recruit');
+  if ((o === 'sow' || o === 'rumor' || o === 'arson') && !/간파|실패|먹히지/.test(m)) bump(g, 'plotWin');
   checkPromote(g);
   return {ok:true, m};
 }
@@ -649,7 +850,7 @@ function aiFaction(f) {
     if (p.agri < capOf(p, 'agri') * 0.75) cands.push(['farm', 62 + (g.pol > 70 ? 18 : 0)]);
     if (p.comm < capOf(p, 'comm') * 0.75) cands.push(['trade', 58 + (g.pol > 70 ? 18 : 0)]);
     if (p.train < 72) cands.push(['drill', 66 + (g.lead > 78 ? 24 : 0) + (front ? 16 : 0)]);
-    if (p.troops < p.pop * (style === 'aggressive' ? 34 : 28)) cands.push(['levy', 60 + (front ? 30 : 0) + (style === 'aggressive' ? 20 : 0)]);
+    if (p.settle === 0 && p.troops < p.pop * (style === 'aggressive' ? 24 : 20)) cands.push(['levy', 60 + (front ? 30 : 0) + (style === 'aggressive' ? 20 : 0)]);
     if (p.wall < capOf(p, 'wall') * 0.7 && (front || style === 'defensive')) cands.push(['wall', 60]);
     if (p.weapon < 3) cands.push(['smith', 46]);
     if (p.armor < 3) cands.push(['armory', 40]);
@@ -683,10 +884,62 @@ function aiFaction(f) {
       }
     }
   }
-  // 잉여 금 소비 (태수 대행 투자)
+  // 병력 이송 → 잉여 금 소비
+  aiLogistics(f);
   aiSurplus(f);
   // 출병 판단
   aiWar(f, style);
+}
+
+/* ---------- AI 병력 이송(兵力移送) ----------
+   후방 도시의 병력을 전선으로 모은다. 이것이 없으면 대국끼리 영원히 교착된다. */
+function isFront(p) { return ADJ[p.id].some(a => { const q = PROV_BY_ID[a.to]; return q.owner !== p.owner; }); }
+function aiLogistics(f) {
+  if (S.turn < 14) return;                     // 개막기에는 각 성이 자기 병력으로만 싸운다
+  const ps = factionProv(f.id);
+  if (ps.length < 2) return;
+  const fronts = ps.filter(isFront);
+  if (!fronts.length) return;
+  // 전선 도시 중 적 방어력 대비 가장 아쉬운 곳으로 모은다
+  fronts.forEach(fp => {
+    fp._need = Math.max(0, bestTargetDef(fp) * 1.35 - armyStrengthEst(fp, f.id));
+  });
+  fronts.sort((a, b) => b._need - a._need);
+  const rear = ps.filter(p => !isFront(p) && p.troops > 1800);
+  rear.forEach(rp => {
+    // 인접 아군 중 전선에 가까운 쪽으로 단계 이송
+    const cand = ADJ[rp.id].map(a => PROV_BY_ID[a.to]).filter(q => q.owner === f.id);
+    if (!cand.length) return;
+    cand.sort((a, b) => (isFront(b) ? 1 : 0) - (isFront(a) ? 1 : 0) || (b._need || 0) - (a._need || 0));
+    const to = cand[0];
+    const send = Math.floor(rp.troops * (isFront(to) ? 0.6 : 0.4));
+    if (send < 400) return;
+    const keep = Math.max(600, Math.round(rp.pop * 3));
+    const real = Math.min(send, Math.max(0, rp.troops - keep));
+    if (real < 400) return;
+    const room = Math.max(0, Math.round(to.pop * 52) - to.troops);   // 전선 집결은 넉넉히 허용
+    const mv = Math.min(real, room);
+    if (mv < 400) return;
+    rp.troops -= mv;
+    to.train = Math.round((to.train * to.troops + rp.train * mv) / Math.max(1, to.troops + mv));
+    to.troops += mv;
+    if (rp.horses > 600) { const h = Math.floor(rp.horses * 0.5); rp.horses -= h; to.horses += h; }
+  });
+  // 전선 도시에 장수도 보낸다
+  const idle = factionGens(f.id).filter(g => g.status === 'ok' && !g.acted && g.rank < 7 &&
+    PROV_BY_ID[g.loc] && !isFront(PROV_BY_ID[g.loc]));
+  const want = fronts[0];
+  idle.slice(0, 2).forEach(g => {
+    if (provGens(want.id).filter(x => x.faction === f.id).length >= 5) return;
+    if (f.gold < 60) return;
+    if (ADJ[g.loc].some(a => a.to === want.id)) doOrder(g, 'move', want.id);
+  });
+}
+function bestTargetDef(p) {
+  let mx = 0;
+  ADJ[p.id].forEach(a => { const q = PROV_BY_ID[a.to];
+    if (q.owner !== p.owner) mx = Math.max(mx, provDefEst(q)); });
+  return mx;
 }
 
 function aiSurplus(f) {
@@ -695,11 +948,11 @@ function aiSurplus(f) {
   while (f.gold > 2200 && k++ < lim) {
     const spend = Math.max(700, Math.min(9000, Math.floor(f.gold * 0.035)));
     if (f.gold < spend) break;
-    const m = clamp(spend / 700, 1, 9);          // 투자 규모 배율
+    const m = clamp(spend / 700, 1, 5);          // 투자 규모 배율
     const p = pick(ps);
     const opts = [];
     if (p.train < 100 + fx(f.id, 'trainCap')) opts.push('train', 'train');
-    if (p.troops < p.pop * 38) opts.push('levy', 'levy');
+    if (p.settle === 0 && p.troops < p.pop * 24) opts.push('levy', 'levy');
     if (p.wall < capOf(p, 'wall')) opts.push('wall');
     if (p.agri < capOf(p, 'agri')) opts.push('agri');
     if (p.comm < capOf(p, 'comm')) opts.push('comm');
@@ -707,11 +960,28 @@ function aiSurplus(f) {
     if (p.armor < 3 + fx(f.id, 'armor')) opts.push('armor');
     if (p.port && p.ships < p.troops * 0.35) opts.push('ship');
     if (p.horses < p.troops * 0.35) opts.push('horse');
-    if (!opts.length) break;
+    const troopCap = Math.round(p.pop * (isFront(p) ? 32 : 24));
+    if (p.settle === 0 && p.troops < troopCap && f.gold > 12000) opts.push('merc', 'merc');
+    if (!opts.length) {
+      // 더 투자할 곳이 없으면 금을 학사 초빙(연구)과 하사금(충성)으로 돌린다 — 금 사장 방지
+      if (f.gold > 4000) {
+        f.gold -= spend;
+        const tr = pick(['civ','mil','dip','cul']);
+        f.tp[tr] += spend * 0.11;
+        const gs = factionGens(f.id).filter(g => g.loyal < 98);
+        if (gs.length) { const g2 = pick(gs); g2.loyal = clamp(g2.loyal + 2, 0, 100); }
+        continue;
+      }
+      break;
+    }
     f.gold -= spend;
     const o = pick(opts);
+    if (o === 'merc') { const unit = mercCost();
+      const n = Math.min(Math.floor(spend / unit), Math.max(0, troopCap - p.troops));
+      p.train = Math.round((p.train * p.troops + 38 * n) / Math.max(1, p.troops + n)); p.troops += n; continue; }
     if (o === 'train') p.train = Math.min(100 + fx(f.id, 'trainCap'), p.train + 4 * m);
-    else if (o === 'levy') { const v = Math.round(p.pop * 1.8 * m); p.troops += v; p.mood = clamp(p.mood - 1.5, 0, 100); p.train = Math.round(p.train * (1 - 0.03 * m)); }
+    else if (o === 'levy') { const v = Math.min(Math.round(p.pop * 1.8 * m * (isMine(f.id) ? 1 : DF().aiTroop)),
+        Math.max(0, troopCap - p.troops)); p.troops += v; p.mood = clamp(p.mood - 1.5, 0, 100); p.train = Math.round(p.train * (1 - 0.03 * m)); }
     else if (o === 'wall') p.wall = Math.min(capOf(p, 'wall'), p.wall + 7 * m);
     else if (o === 'agri') p.agri = Math.min(capOf(p, 'agri'), p.agri + 6 * m);
     else if (o === 'comm') p.comm = Math.min(capOf(p, 'comm'), p.comm + 6 * m);
@@ -725,29 +995,42 @@ function aiSurplus(f) {
 function aiWar(f, style) {
   if (S.turn < 4) return;                       // 개막 직후 유예
   if (S.turn < 10 && Math.random() < 0.55) return;
-  const aggr = {aggressive:0.98, balanced:1.18, schemer:1.15, steady:1.28, defensive:1.55, passive:1.95, honorable:1.22, diplomatic:1.45}[style] || 1.25;
+  const base = {aggressive:0.98, balanced:1.18, schemer:1.15, steady:1.28, defensive:1.55, passive:1.95, honorable:1.22, diplomatic:1.45}[style] || 1.25;
   const ps = factionProv(f.id);
-  let best = null;
+  // 대국은 더 공격적, 연합 참가국은 표적에게 더 공격적
+  const sizeBoost = 1 - Math.min(0.22, Math.max(0, ps.length - 8) * 0.018);
+  const cand = [];
   ps.forEach(p => {
     if (p.troops < 2400) return;
     ADJ[p.id].forEach(a => {
       const q = PROV_BY_ID[a.to];
       if (q.owner === f.id) return;
       if (q.owner && ['ally','truce','vassal'].indexOf(relation(f.id, q.owner)) >= 0) return;
+      if (S.cheat && S.cheat.peace && q.owner && isMine(q.owner)) return;    // 天機 — 아무도 나를 치지 않는다
       if (a.t === 'sea' && p.ships < 400) return;
+      let aggr = base * sizeBoost * (isMine(f.id) ? 1 : DF().aiAggr);
+      if (q.owner && inCoalitionVs(f.id, q.owner)) aggr *= 0.72;      // 맹약 표적은 과감히 친다
       const myStr = armyStrengthEst(p, f.id), enStr = provDefEst(q);
       const sc = myStr / (enStr + 1);
-      if (sc > aggr) { const v = sc * (q.owner ? 1 : 1.4) * (1 + provValue(q) / 3000);
-        if (!best || v > best.v) best = {from:p, to:q, v, sc}; }
+      if (sc > aggr) cand.push({from:p, to:q, v: sc * (q.owner ? 1 : 1.4) * (1 + provValue(q) / 3000), sc});
     });
   });
-  if (!best) return;
-  if (best.to.owner && relation(f.id, best.to.owner) !== 'war') {
-    const cur = f.rel[best.to.owner]; cur.state = 'war'; fOf(best.to.owner).rel[f.id].state = 'war';
-    cur.v = clamp(cur.v - 40, -100, 100);
-    logMsg(`【선전포고】${f.name} → ${fOf(best.to.owner).name}`, 'bad');
+  if (!cand.length) return;
+  cand.sort((a, b) => b.v - a.v);
+  // 군량이 없으면 대군을 낼 수 없다
+  const maxAtk = Math.max(1, Math.min(1 + Math.floor(ps.length / 6), Math.floor(f.food / 9000)));
+  const used = {};
+  let done = 0;
+  for (const c of cand) {
+    if (done >= maxAtk) break;
+    if (used[c.from.id] || used[c.to.id]) continue;
+    if (c.to.owner && relation(f.id, c.to.owner) !== 'war') {
+      const cur = f.rel[c.to.owner]; cur.state = 'war'; fOf(c.to.owner).rel[f.id].state = 'war';
+      cur.v = clamp(cur.v - 40, -100, 100);
+      logMsg(`【선전포고】${f.name} → ${fOf(c.to.owner).name}`, 'bad');
+    }
+    if (launchAttack(f.id, c.from.id, c.to.id, null, false)) { used[c.from.id] = 1; used[c.to.id] = 1; done++; }
   }
-  launchAttack(f.id, best.from.id, best.to.id, null, false);
 }
 
 function armyStrengthEst(p, fid) {
@@ -755,11 +1038,15 @@ function armyStrengthEst(p, fid) {
   const lead = gs.length ? Math.max(...gs.map(g => g.lead * 0.6 + g.war * 0.4)) : 40;
   return p.troops * (0.55 + p.train / 100) * (0.88 + p.weapon * 0.06) * (0.6 + lead / 100) * (1 + fx(fid, 'power'));
 }
+function lastStand(q) {
+  if (!q.owner) return 1;
+  return factionProv(q.owner).length <= 1 ? 1.22 : (factionProv(q.owner).length <= 2 ? 1.10 : 1);
+}
 function provDefEst(q) {
   const gs = provGens(q.id);
   const lead = gs.length ? Math.max(...gs.map(g => g.lead * 0.6 + g.war * 0.4)) : 35;
   return q.troops * (0.55 + q.train / 100) * (0.88 + q.armor * 0.06) * (0.6 + lead / 100)
-    * (1 + q.wall / 340) * TERRAIN[q.t].def * (q.owner ? 1 : 0.8);
+    * (1 + q.wall / 340) * TERRAIN[q.t].def * (q.owner ? 1 : 0.8) * lastStand(q);
 }
 
 /* ---------- 턴 진행 ---------- */
@@ -777,8 +1064,9 @@ function settlePhase() {
   loyaltyMonth();
   randomEvents();
   S.gens.forEach(g => { g.acted = false; if (g.hurt > 0) g.hurt = Math.max(0, g.hurt - 1 - (sfx(g,'heal') > 0 ? 1 : 0)); });
+  coalitionCheck();
   S.month++;
-  if (S.month > 12) { S.month = 1; S.year++; yearlyGens(); spawnGenerals(); }
+  if (S.month > 12) { S.month = 1; S.year++; yearlyGens(); spawnGenerals(); snapChron(); }
   S.turn++;
   syncFactionProv();
   checkHistory();

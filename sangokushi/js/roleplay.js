@@ -59,6 +59,8 @@ const RP = {
     A.push({id:'train_lead',n:'병법 연구', d:'통솔이 오를 수 있다', gold:0, kind:'self'});
     A.push({id:'befriend',  n:'친교',      d:'동료 장수와 친분을 쌓는다 (충성·유대)', gold:60, kind:'self'});
     A.push({id:'advise',    n:'진언',      d:'주군에게 계책을 올린다 (공적·세력 이익)', gold:0, kind:'self'});
+    A.push({id:'spar',      n:'연무(演武)', d:'동료와 무예를 겨룬다 — 무력·통솔 성장과 유대', gold:0, kind:'self'});
+    A.push({id:'oath',      n:'의형제 결의', d:'뜻이 맞는 동료와 형제의 의를 맺는다 (전투 결속 +5%)', gold:200, kind:'self'});
     A.push({id:'hunt',      n:'도적 토벌', d:'치안을 회복하고 공적을 얻는다', gold:0, kind:'self'});
     if (g.rank >= 1) A.push({id:'recruit_p', n:'등용', d:'같은 도시의 재야를 등용한다', gold:100, kind:'self'});
     A.push({id:'search_p', n:'인재탐색', d:'숨은 인재를 찾는다', gold:80, kind:'self'});
@@ -84,6 +86,37 @@ const RP = {
         else m = `${kn} 수련에 힘썼으나 별 진전이 없었다`;
         if (id === 'train_war' && Math.random() < 0.04) { g.hurt = 1; m += ' — 수련 중 다쳤다'; }
         g.merit += 8; break; }
+      case 'spar': {
+        const mates = provGens(p.id).filter(x => x !== g && x.faction === g.faction);
+        if (!mates.length) { m = '이 성에는 겨룰 상대가 없다'; break; }
+        mates.sort((a, b) => b.war - a.war);
+        const t = mates[Math.min(ri(0, 1), mates.length - 1)];
+        const gap = t.war - g.war;
+        const pr = clamp(0.34 + gap / 120, 0.1, 0.8);
+        if (Math.random() < pr) {
+          const k = Math.random() < 0.65 ? 'war' : 'lead';
+          g[k] = clamp(g[k] + 1, 1, 100);
+          m = `${t.name}과 목검을 겨루며 ${k === 'war' ? '무력' : '통솔'}이 1 올랐다 (${g[k]})`;
+        } else m = `${t.name}과 겨루었으나 배운 것이 적다`;
+        t.bond = (t.bond || 0) + 3; g.bond = (g.bond || 0) + 3;
+        t.loyal = clamp(t.loyal + 2, 0, 100);
+        if (Math.random() < 0.05) { g.hurt = 1; m += ' — 겨루다 다쳤다'; }
+        g.merit += 12; break; }
+      case 'oath': {
+        if (!pay(200)) return {ok:false, m:'금이 부족하다 (200)'};
+        const mates = provGens(p.id).filter(x => x !== g && x.faction === g.faction && !bondOf(g.name, x.name));
+        if (!mates.length) { m = '이 성에는 의를 맺을 상대가 없다'; break; }
+        mates.sort((a, b) => (b.faith + b.loyal) - (a.faith + a.loyal));
+        const t = arg ? genByName(arg) : mates[0];
+        const pr = clamp(0.18 + (g.bond || 0) / 60 + (g.cha - 55) / 160 + (t.faith - 50) / 180 + (t.loyal - 55) / 220, 0.05, 0.9);
+        if (Math.random() < pr) {
+          addBond(g.name, t.name, 'oath');
+          t.loyal = clamp(t.loyal + 12, 0, 100);
+          m = `${t.name}과 의형제의 의를 맺었다! 같은 군에서 싸우면 결속 보너스를 받는다`;
+          logMsg(`【결의】${g.name}과 ${t.name}이 형제의 의를 맺었다.`, 'good', g.faction);
+          annal(`${g.name}·${t.name} 의형제 결의`, 'oath');
+        } else m = `${t.name}은 아직 그만한 신뢰를 주지 않는다 (성공률 ${Math.round(pr * 100)}%)`;
+        break; }
       case 'befriend': {
         if (!pay(60)) return {ok:false, m:'금이 부족하다'};
         const mates = provGens(p.id).filter(x => x !== g && x.faction === g.faction);
@@ -230,7 +263,7 @@ const RP = {
       id, name: g.name.length > 3 ? g.name.slice(0, 2) : g.name, han: g.han.slice(0, 1) + '氏',
       region: p.region, color: pick(colors), ruler: g.name, cap: p.id, prov: [p.id],
       ai: 'balanced', pref: 'foot', desc: `${g.name}이 ${p.name}에서 일으킨 신흥 세력.`,
-      gold: 600, food: 3000, alive: true, tp:{civ:0,mil:0,dip:0,cul:0}, techs: [], rel: {}, bonus: {}, fame: 0, vassalOf: null
+      gold: 1500, food: 4500, alive: true, tax: 1, tp:{civ:0,mil:0,dip:0,cul:0}, techs: [], rel: {}, bonus: {}, fame: 0, vassalOf: null
     };
     Object.keys(S.factions).forEach(k => {
       f.rel[k] = {state: k === old ? 'war' : 'none', v: k === old ? -60 : ri(-15, 10), turns: 0};
@@ -246,5 +279,6 @@ const RP = {
     S.player.mode = 'lord'; S.player.faction = id; S.player.mates = []; S.player.mission = null;
     logMsg(`【기병】${g.name}이 ${p.name}에서 거병하여 독립했다!`, 'big');
     syncFactionProv();
+    f.lastIncome = projectIncome(f);
   }
 };
