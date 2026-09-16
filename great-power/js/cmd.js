@@ -281,6 +281,16 @@ function showHelp(){
       <tr><td>진행</td><td>다음 달 / 턴 / 저장 / 불러오기</td></tr>
       <tr><td>치트</td><td><b>F4</b> 또는 "치트" — 켜면 돈 5000 · 기술 전부 · 병력 30 · 즉시 승리 등이 먹힌다</td></tr>
     </table>
+    <div style="margin-top:14px"><b style="color:var(--gold2)">마우스 조작</b></div>
+    <table class="t" style="margin-top:6px">
+      <tr><th>동작</th><th>결과</th></tr>
+      <tr><td>좌클릭</td><td>프로빈스 선택 / 부대 마커를 누르면 그 부대 선택</td></tr>
+      <tr><td>좌클릭 드래그</td><td>상자 안의 내 부대·함대를 모두 선택 (Shift로 추가)</td></tr>
+      <tr><td>우클릭</td><td>선택한 부대에게 그곳으로 가라고 명령 (적지면 공격)</td></tr>
+      <tr><td>우클릭 드래그</td><td>지도 이동</td></tr>
+      <tr><td>휠</td><td>확대 / 축소</td></tr>
+      <tr><td>Ctrl+A / Esc</td><td>전군 선택 / 선택 해제</td></tr>
+    </table>
     <div class="tiny" style="margin-top:12px">
       지역 이름은 지도에 적힌 그대로 쓰면 된다(예: 화북, 우크라이나, 북인도).
       지역을 적지 않으면 <b>지도에서 선택한 지역</b>이 대상이 된다.

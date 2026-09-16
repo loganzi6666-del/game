@@ -1,7 +1,7 @@
 /* ============================================================
    열강의 시대 1900 — 시작 / 진행
    ============================================================ */
-const GAME_VERSION = 'v1.2 · 2026-09-16';   // UPDATE.bat / update.sh 로 갱신
+const GAME_VERSION = 'v1.3 · 2026-09-16';   // UPDATE.bat / update.sh 로 갱신
 let PICK=null;
 
 function initStart(){
@@ -113,6 +113,15 @@ function showIntro(){
         · 아래 <b>명령창</b>에 한국어로 적어도 된다. 예) "프랑스와 동맹", "공장 건설"
         </div>
       </div>
+      <div style="margin-top:12px">
+        <b style="color:var(--gold2)">부대 다루는 법</b>
+        <div class="tiny" style="margin-top:4px">
+        · <b>드래그</b>로 상자를 그려 부대를 한꺼번에 고른다 (Shift = 추가, Ctrl+A = 전군)<br>
+        · 고른 뒤 목표를 <b>우클릭</b> — 붙어 있으면 즉시 이동·공격, 멀면 매달 알아서 진군<br>
+        · <b>우클릭 끌기</b>로 지도를 옮기고, 휠로 확대한다<br>
+        · 사각 마커의 숫자는 육지에선 <b>사단 수</b>, 바다에선 <b>함선 수</b>다
+        </div>
+      </div>
       <div class="tiny" style="margin-top:12px">${G.endYear}년까지 서열 1위에 오르는 것이 목표다.</div>
     </div>
     <div class="mc"><button class="btn gold" style="width:100%" onclick="closeModals()">집무를 시작한다</button></div>`);
@@ -201,7 +210,18 @@ function wireUI(){
     if(e.key==='F4'){ e.preventDefault(); toggleCheat(); return; }   // 어디서든 동작
     if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
     if(e.key===' '){ e.preventDefault(); doNextTurn(); }
-    if(e.key==='Escape'){ closeModals(); if(CHEAT.open) closeCheat(); UI.order=null; paintMap(); }
+    if(e.key==='Escape'){
+      closeModals(); if(CHEAT.open) closeCheat(); UI.order=null;
+      if(UI.selArmies) UI.selArmies.clear(); if(UI.selFleets) UI.selFleets.clear();
+      refreshAll();
+    }
+    if(e.key==='a' && (e.ctrlKey||e.metaKey)){        // 전군 선택
+      e.preventDefault();
+      const me=G.nats[G.player];
+      UI.selArmies=new Set(Object.keys(me.armies).filter(i=>me.armies[i]>=0.5));
+      UI.selFleets=new Set(Object.keys(me.fleets||{}).filter(z=>me.fleets[z]>=0.5));
+      refreshAll();
+    }
     const keys={'1':'pol','2':'ctrl','3':'dev','4':'unrest','5':'army','6':'rel','7':'res'};
     if(keys[e.key]){ UI.mode=keys[e.key];
       document.querySelectorAll('.mapmode').forEach(x=>x.classList.toggle('on',x.dataset.mode===UI.mode));

@@ -67,6 +67,9 @@ function moveArmy(code, from, to, divs){
   if(isSeaLink(from,to) && n.navy<3) return {ok:false,msg:'해상 이동에는 해군 3척 이상 필요'};
   n.armies[from]-=divs; if(n.armies[from]<=0.05) delete n.armies[from];
   n.armies[to]=(n.armies[to]||0)+divs;
+  if(typeof generalAt==='function'){                  // 장군은 주력을 따라간다
+    const g=generalAt(n, from); if(g && divs >= (n.armies[from]||0)) g.loc=to;
+  }
   return {ok:true,msg:`${G.provs[from].name} → ${G.provs[to].name} ${divs.toFixed(0)}개 사단 이동`};
 }
 function startResearch(code, branch, techId){
@@ -133,8 +136,12 @@ function nextTurn(){
     const n=G.nats[code]; if(!n.alive) continue;
     economyTick(n); researchTick(n); buildTick(n); manpowerTick(n); stabilityTick(n);
     if(typeof cabinetTick==='function') cabinetTick(n);
+    if(typeof generalTick==='function') generalTick(n);
   }
-  for(const code in G.nats){ const n=G.nats[code]; if(n.alive) processMarchOrders(n); }
+  for(const code in G.nats){ const n=G.nats[code]; if(!n.alive) continue;
+    n.fleetMoved={};                                   // 이번 달 이동 가능 상태로 초기화
+    if(typeof processFleetOrders==='function') processFleetOrders(n);
+    processMarchOrders(n); }
   provinceTick();
   warTick();
   aiTick();

@@ -75,7 +75,8 @@ function newGame(playerCode, opts){
       alloc:{ind:34,pol:33,mil:33},
       armies:{}, navy:d.navy, manpower:0, casualties:0, exh:0, taxRate:1.0,
       relations:{}, allies:[], truces:{}, guarantees:[], vassalOf:null, vassals:[],
-      fleets:{}, fleetMoved:{}, orders:{}, cabinet:{}, candidates:{},
+      fleets:{}, fleetMoved:{}, fleetOrders:{}, orders:{}, cabinet:{}, candidates:{},
+      generals:[], genPool:[],
       building:[], recruiting:[], ai:d.ai||{agg:.3,exp:.3,dip:.5}, gp:!!d.gp,
       alive:true, score:0, rank:99, aggression:0, warGoals:{},
       history:[],
@@ -89,6 +90,17 @@ function newGame(playerCode, opts){
   setupDiplomacy();
   if(typeof deployFleets==='function') deployFleets();
   if(typeof initCabinet==='function') for(const c in G.nats) initCabinet(G.nats[c]);
+  if(typeof makeGeneral==='function') for(const c in G.nats){
+    const n=G.nats[c];
+    n.genPool=[0,1,2].map(()=>makeGeneral(c));
+    const cnt=Math.min(generalCap(n), n.gp?2:1);
+    for(let i=0;i<cnt && n.genPool.length;i++){
+      const best=n.genPool.slice().sort((a,b)=>b.skill-a.skill)[0];
+      n.genPool=n.genPool.filter(x=>x!==best); n.generals.push(best);
+    }
+    const stacks=Object.keys(n.armies).sort((a,b)=>n.armies[b]-n.armies[a]);
+    n.generals.forEach((gg,i)=>{ if(stacks[i]) gg.loc=stacks[i]; });
+  }
   recalcScores();
   computeHandicap();
   for(const c in G.nats){ const n=G.nats[c]; n._m=calcMods(n);

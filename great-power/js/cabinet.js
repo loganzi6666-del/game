@@ -308,3 +308,99 @@ function panelCabinet(){
   h+=`</div>`;
   return h;
 }
+
+/* ============================================================
+   장군 — 부대에 붙여 두면 그 부대가 강해진다
+   ============================================================ */
+const GTRAITS = {
+  assault  : { n:'돌격전문', d:'앞장서서 밀어붙인다',       atk:.12 },
+  defensive: { n:'방어전문', d:'참호를 파게 하는 사람',     def:.15 },
+  logistic : { n:'보급 귀재', d:'굶는 병사를 만들지 않는다', sup:.15 },
+  cautious : { n:'신중함',   d:'무모하게 던지지 않는다',     loss:-.25 },
+  cavalry  : { n:'기병 출신', d:'속도로 허를 찌른다',        atk:.07, sup:.07 },
+  siege    : { n:'공성 전문', d:'요새를 깨는 법을 안다',     fort:-.35 },
+  ruthless : { n:'냉혹함',   d:'병사를 아끼지 않는다',       atk:.15, loss:.25 },
+  beloved_g: { n:'병사의 아버지', d:'그를 위해서라면 죽는다', def:.08, loss:-.15 },
+  naval    : { n:'해군 제독', d:'바다에서 더 빛난다',         nav:.18 },
+};
+function makeGeneral(code){
+  const pool = NAMEPOOL[cultureOf(code)] || NAMEPOOL.lat;
+  NAME_USED[code]=NAME_USED[code]||new Set();
+  let name='';
+  for(let i=0;i<24;i++){
+    const s=pick(pool.s);
+    name=(pool.g&&pool.g.length)? s+pick(pool.g) : s;
+    if(!NAME_USED[code].has(name)) break; name='';
+  }
+  if(!name){ const s=pick(pool.s); const base=(pool.g&&pool.g.length)? s+pick(pool.g):s;
+    let gen=2; while(NAME_USED[code].has(base+' '+gen+'세')) gen++; name=base+' '+gen+'세'; }
+  NAME_USED[code].add(name);
+  const keys=Object.keys(GTRAITS);
+  const traits=[pick(keys)];
+  if(rnd()<0.3){ const t=pick(keys); if(t!==traits[0]) traits.push(t); }
+  return { id:'g'+(MIN_SEQ++), name, age:44+Math.floor(rnd()*24),
+           skill: 2+Math.floor(rnd()*6), traits, loc:null, wins:0, losses:0, exp:0 };
+}
+function generalCap(n){ return 2 + Math.floor(armyTotal(n)/14); }
+function generalAt(n, provId){ return (n.generals||[]).find(g=>g.loc===provId) || null; }
+function generalBonus(n, provId){
+  const g=generalAt(n, provId);
+  const out={atk:0,def:0,sup:0,loss:0,fort:0,nav:0};
+  if(!g) return out;
+  const s=(g.skill-4)*0.022;
+  out.atk+=s; out.def+=s*0.8; out.sup+=s*0.5;
+  for(const t of g.traits){ const T=GTRAITS[t]; if(!T) continue;
+    for(const k in out) if(T[k]) out[k]+=T[k]; }
+  return out;
+}
+function hireGeneral(n, id){
+  n.genPool=n.genPool||[]; n.generals=n.generals||[];
+  const g=n.genPool.find(x=>x.id===id);
+  if(!g) return {ok:false,msg:'그런 인물이 없다'};
+  if(n.generals.length>=generalCap(n)) return {ok:false,msg:`장군 정원을 넘었다 (최대 ${generalCap(n)}명 — 군을 더 키워야 한다)`};
+  if(n.pp<15) return {ok:false,msg:'정치력이 부족하다 (필요 15)'};
+  n.pp-=15;
+  n.genPool=n.genPool.filter(x=>x.id!==id);
+  n.generals.push(g);
+  if(n.code===G.player) logEvent('임관', `${g.name} 장군을 등용했다.`, 'politics', n.code);
+  return {ok:true,msg:`${g.name} 장군 등용`};
+}
+function dismissGeneral(n, id){
+  const i=(n.generals||[]).findIndex(g=>g.id===id);
+  if(i<0) return {ok:false,msg:'없는 장군이다'};
+  const g=n.generals[i];
+  n.generals.splice(i,1); n.genPool=(n.genPool||[]).concat([g]);
+  return {ok:true,msg:`${g.name} 장군을 예편시켰다`};
+}
+function assignGeneral(n, id, provId){
+  const g=(n.generals||[]).find(x=>x.id===id);
+  if(!g) return {ok:false,msg:'없는 장군이다'};
+  if(provId && !(n.armies[provId]>=1)) return {ok:false,msg:'그곳에 우리 부대가 없다'};
+  if(provId) for(const o of n.generals) if(o!==g && o.loc===provId) o.loc=null;   // 한 부대에 한 명
+  g.loc=provId||null;
+  return {ok:true,msg: provId? `${g.name} 장군이 ${G.provs[provId].name} 부대를 맡았다` : `${g.name} 장군을 대기시켰다`};
+}
+function generalTick(n){
+  n.genPool=n.genPool||[]; n.generals=n.generals||[];
+  if(n.genPool.length<3 && rnd()<0.10) n.genPool.push(makeGeneral(n.code));
+  if(n.genPool.length>6) n.genPool.shift();
+  for(const g of [...n.generals]){
+    if(g.loc && !(n.armies[g.loc]>=1)) g.loc=null;                 // 부대가 사라지면 대기
+  }
+  if(G.month!==0) return;
+  for(const g of [...n.generals]){
+    g.age++;
+    if(g.age>68 && rnd()<0.14){
+      n.generals=n.generals.filter(x=>x!==g);
+      if(n.code===G.player) logEvent('예편', `${g.name} 장군이 ${g.age}세로 군을 떠났다.`, 'politics', n.code);
+    }
+  }
+  if(n.code!==G.player){                                            // AI 는 알아서 채운다
+    while(n.generals.length<generalCap(n) && n.genPool.length && n.pp>30){
+      const best=n.genPool.slice().sort((a,b)=>b.skill-a.skill)[0];
+      if(!hireGeneral(n,best.id).ok) break;
+    }
+    const stacks=Object.keys(n.armies).filter(i=>n.armies[i]>=1).sort((a,b)=>n.armies[b]-n.armies[a]);
+    n.generals.forEach((g,i)=>{ if(stacks[i]) assignGeneral(n,g.id,stacks[i]); });
+  }
+}

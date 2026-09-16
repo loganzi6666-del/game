@@ -101,6 +101,46 @@ function fleetMove(code, from, to, ships){
   return {ok:true,msg:`${SEA_ZONES[from].n} → ${SEA_ZONES[to].n} ${ships}척 이동`};
 }
 
+/* ---------- 항로 명령 (여러 해역을 거쳐 이동) ---------- */
+function zoneNextStep(from, to){
+  if(from===to) return null;
+  const prev={}, seen={[from]:true}; let fr=[from];
+  for(let d=0; d<12 && fr.length; d++){
+    const nx=[];
+    for(const z of fr) for(const nb of zoneAdj(z)){
+      if(seen[nb]) continue;
+      seen[nb]=true; prev[nb]=z;
+      if(nb===to){ let cur=to; while(prev[cur]!==from){ cur=prev[cur]; if(cur===undefined) return null; } return cur; }
+      nx.push(nb);
+    }
+    fr=nx;
+  }
+  return null;
+}
+function setFleetOrder(code, from, to, ships){
+  const n=G.nats[code];
+  if(!((n.fleets||{})[from]>=1)) return {ok:false,msg:'그 해역에 함대가 없다'};
+  if(from===to){ if(n.fleetOrders) delete n.fleetOrders[from]; return {ok:true,msg:'항로를 취소했다'}; }
+  if(!SEA_ZONES[to]) return {ok:false,msg:'없는 해역이다'};
+  if(!zoneNextStep(from,to)) return {ok:false,msg:'그 해역까지 가는 항로가 없다'};
+  n.fleetOrders=n.fleetOrders||{};
+  n.fleetOrders[from]={to, ships: Math.min(ships||n.fleets[from], n.fleets[from])};
+  return {ok:true,msg:`${SEA_ZONES[from].n} 함대가 ${SEA_ZONES[to].n}(으)로 향한다`};
+}
+function processFleetOrders(n){
+  n.fleetOrders=n.fleetOrders||{};
+  for(const from of Object.keys(n.fleetOrders)){
+    const o=n.fleetOrders[from];
+    if(!((n.fleets||{})[from]>=1) || !SEA_ZONES[o.to]){ delete n.fleetOrders[from]; continue; }
+    if(from===o.to){ delete n.fleetOrders[from]; continue; }
+    const step=zoneNextStep(from,o.to);
+    delete n.fleetOrders[from];
+    if(!step) continue;
+    const r=fleetMove(n.code, from, step, o.ships);
+    if(r.ok && step!==o.to && n.fleets[step]>=1) n.fleetOrders[step]={to:o.to, ships:o.ships};
+  }
+}
+
 /* ---------- 해전 ---------- */
 function navalTick(){
   for(const z in SEA_ZONES){
@@ -219,41 +259,33 @@ function aiFleetTick(n){
 }
 
 /* ---------- 렌더 ---------- */
-function drawFleets(g, px){
+function drawFleets(g, px, U){
   const me=G.nats[G.player];
+  const zoom = MAP_VIEW.w/UI.view.w;
+  UI.selFleets = UI.selFleets || new Set();
   for(const z in SEA_ZONES){
     const Z=SEA_ZONES[z];
     const present=fleetsIn(z);
-    // 클릭 영역은 함대가 없어도 둔다
-    const hit=sv('circle',{cx:Z.x, cy:Z.y, r:px(20), fill:'transparent', class:'seahit','data-zone':z});
+    const hit=sv('circle',{cx:Z.x, cy:Z.y, r:px(present.length?24:16),
+      fill:'transparent', class:'seahit','data-zone':z});
     hit.style.cursor='pointer';
     g.appendChild(hit);
     if(!present.length) continue;
     const [c,v]=present[0];
     const mine=c===G.player;
-    const sel=UI.seaSel===z;
-    const w=px(Math.max(13, Math.min(26, 12+Math.sqrt(v)*1.6)));
-    g.appendChild(sv('rect',{x:Z.x-w/2, y:Z.y-w*0.34, width:w, height:w*0.68, rx:px(2),
-      fill:G.nats[c].color, stroke: sel?'#fff' : mine?'#e5c65a':'#0b1620',
-      'stroke-width': sel?3 : mine?2:1.3, 'vector-effect':'non-scaling-stroke', opacity:.95}));
-    // 돛대
-    g.appendChild(sv('line',{x1:Z.x, y1:Z.y-w*0.34, x2:Z.x, y2:Z.y-w*0.72,
-      stroke:'#dfe6ec','stroke-width':1.6,'vector-effect':'non-scaling-stroke'}));
-    const t=sv('text',{x:Z.x, y:Z.y+px(3.4), class:'armytag',
-      style:`font-size:${px(10)}px;stroke-width:${px(2.5)}px`});
-    t.textContent=Math.round(v); g.appendChild(t);
+    const order = mine && me.fleetOrders && me.fleetOrders[z];
+    drawCounter(g,{ x:Z.x, y:Z.y, U, color:G.nats[c].color, value:v, kind:'fleet',
+      selected: mine && UI.selFleets.has(z), mine, dataKey:z,
+      tag: zoom>2.2 ? (Math.round(v)+'척'+(order?' »':'')) : (order?'»':null) });
     if(present.length>1){
-      const t2=sv('text',{x:Z.x+w/2+px(4), y:Z.y-px(4), class:'caplabel',
-        style:`font-size:${px(11)}px;fill:#ff9a9a;stroke-width:${px(3)}px`});
+      const t2=sv('text',{x:Z.x-px(24), y:Z.y+px(4), class:'caplabel',
+        style:`font-size:${px(12)}px;fill:#ff8a8a;stroke-width:${px(3)}px`});
       t2.textContent='⚓'; g.appendChild(t2);
     }
-  }
-  // 이동 가능 해역 표시
-  if(UI.seaSel && me.fleets && me.fleets[UI.seaSel]){
-    for(const zz of zoneAdj(UI.seaSel)){
-      const Z=SEA_ZONES[zz];
-      g.appendChild(sv('circle',{cx:Z.x, cy:Z.y, r:px(15), fill:'none', stroke:'#7fdc9a',
-        'stroke-width':2,'vector-effect':'non-scaling-stroke','stroke-dasharray':'4 4'}));
+    if(zoom>1.6){
+      const t=sv('text',{x:Z.x, y:Z.y-px(15), class:'caplabel',
+        style:`font-size:${px(9.5)}px;stroke-width:${px(3)}px;fill:#9fc4dc`});
+      t.textContent=Z.n; g.appendChild(t);
     }
   }
 }

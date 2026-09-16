@@ -83,8 +83,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 #zoomctl button{background:#16222edd;border:1px solid var(--line);width:32px;height:32px;border-radius:4px;font-size:16px}
 #legend{
   position:absolute;left:12px;bottom:12px;background:#0f1a24e6;border:1px solid var(--line);
-  border-radius:5px;padding:8px 10px;font-size:11px;z-index:10;max-width:240px;
+  border-radius:5px;padding:6px 10px 8px;font-size:11px;z-index:10;max-width:230px;
 }
+#legend .lgtoggle{display:block;width:100%;text-align:left;color:var(--gold);font-size:10px;
+  letter-spacing:.08em;padding:2px 0 5px;border-bottom:1px solid var(--line);margin-bottom:5px}
+#legend.folded .lgbody{display:none}
+#legend.folded{padding-bottom:4px}
 #legend .lg{display:flex;align-items:center;gap:6px;margin:2px 0}
 #legend i{width:14px;height:10px;border-radius:2px;display:inline-block}
 
@@ -276,3 +280,21 @@ input[type=range]{padding:0}
 .mtr{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:4px}
 .mtrait{font-size:10px;background:#2a3a4a;border-radius:3px;padding:1px 6px;color:#bcd}
 .mtrait.bad{background:#4a2528;color:#ffb3b3}
+
+/* ---------- 드래그 선택 / 선택 바 ---------- */
+#selbox{
+  position:absolute;display:none;border:1.5px solid #7fdc9a;background:#7fdc9a22;
+  pointer-events:none;z-index:15;border-radius:2px;
+}
+#selbar{
+  position:absolute;left:50%;transform:translateX(-50%);bottom:14px;z-index:14;
+  display:none;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;
+  background:#0f1a24ee;border:1px solid var(--gold);box-shadow:0 8px 26px #000a;backdrop-filter:blur(4px);
+}
+#selbar .sbi{display:flex;flex-direction:column;line-height:1.15}
+#selbar .sbi b{font-size:15px;font-variant-numeric:tabular-nums;color:var(--gold2)}
+#selbar .sbi span{font-size:10px;color:var(--dim2)}
+#selbar .hint{font-size:11px;color:var(--dim);max-width:280px;line-height:1.45}
+#selbar .hint b{color:var(--gold2)}
+#map.dragging{cursor:grabbing}
+#map{cursor:default}

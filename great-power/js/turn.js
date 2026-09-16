@@ -129,17 +129,23 @@ function attack(code, from, to, divs){
   const en = G.nats[enemyOwner];
   const defDivs = (en && en.armies[to]) || 0;
   const ter = TERRAIN[pt.ter]||{def:1};
-  const sup = supplyAt(n, from);
+  const gb = (typeof generalBonus==='function') ? generalBonus(n, from) : {atk:0,def:0,sup:0,loss:0,fort:0};
+  const gd = (typeof generalBonus==='function' && en) ? generalBonus(en, to) : {atk:0,def:0,sup:0,loss:0,fort:0};
+  // 지휘관은 전투가 끝나면 자리를 옮길 수 있으니 먼저 붙잡아 둔다
+  const genA = (typeof generalAt==='function') ? generalAt(n, from) : null;
+  const genD = (typeof generalAt==='function' && en) ? generalAt(en, to) : null;
+  const sup = supplyAt(n, from) * (1+gb.sup);
 
-  let attStr = divs * n._m.atk * (n._m.mor||1) * sup * (0.85+rnd()*0.3);
+  let attStr = divs * n._m.atk * (1+gb.atk) * (n._m.mor||1) * sup * (0.85+rnd()*0.3);
   if(naval) attStr *= 0.72;
-  let defStr = defDivs * (en?en._m.def:1) * ter.def * (1 + pt.fort*0.18) * (0.85+rnd()*0.3);
+  let defStr = defDivs * (en?en._m.def:1) * (1+gd.def) * ter.def
+             * (1 + pt.fort*0.18*(1+gb.fort)) * (0.85+rnd()*0.3);
   if(en && pt.cores.includes(enemyOwner)) defStr *= (en._m.homedef||1) * 1.12;
   if(defDivs===0) defStr = 0.35 + pt.fort*0.5 + pt.dev*0.06;   // 민병·수비대
 
   const ratio = attStr/(defStr+0.01);
-  const lossA = Math.min(divs, Math.max(0, divs * 0.16 / Math.max(0.5, Math.min(2.2, ratio))));
-  const lossD = Math.min(defDivs, defDivs * 0.16 * Math.max(0.5, Math.min(2.2, ratio)));
+  const lossA = Math.min(divs, Math.max(0, divs * 0.16 * (1+gb.loss) / Math.max(0.5, Math.min(2.2, ratio))));
+  const lossD = Math.min(defDivs, defDivs * 0.16 * (1+gd.loss) * Math.max(0.5, Math.min(2.2, ratio)));
   n.armies[from] = Math.max(0, avail - Math.round(lossA*10)/10);
   if(n.armies[from] < 0.05) delete n.armies[from];
   if(en && defDivs){
@@ -163,6 +169,8 @@ function attack(code, from, to, divs){
     const keep = Math.min(moved, Math.max(1, Math.round(divs - lossA)));
     n.armies[from] -= keep;
     n.armies[to] = (n.armies[to]||0) + keep;
+    if(typeof generalAt==='function'){ const g=generalAt(n, from);   // 장군은 주력을 따라간다
+      if(g && keep >= (n.armies[from]||0)) g.loc=to; }
     if(en && en.armies[to]){                       // 패잔병 후퇴
       const retreat = retreatTarget(en, to);
       if(retreat){ en.armies[retreat]=(en.armies[retreat]||0)+en.armies[to]; }
@@ -175,8 +183,17 @@ function attack(code, from, to, divs){
   } else {
     result='교착';
   }
+  {                                                        // 전공과 경험
+    const ga=genA, gdg=genD;
+    if(ga){ if(result==='승리'){ ga.wins++; ga.exp+=1; } else if(result==='격퇴'){ ga.losses++; ga.exp+=0.4; }
+      if(ga.exp>=4 && ga.skill<10){ ga.skill++; ga.exp=0;
+        if(n.code===G.player) logEvent('승진', `${ga.name} 장군의 지휘 능력이 ${ga.skill}로 올랐다.`, 'win', n.code); } }
+    if(gdg){ if(result!=='승리'){ gdg.wins++; gdg.exp+=1; } else { gdg.losses++; gdg.exp+=0.4; }
+      if(gdg.exp>=4 && gdg.skill<10){ gdg.skill++; gdg.exp=0; } }
+  }
   const report = {
     y:G.year, m:G.month, from:pf.name, to:pt.name, attacker:n.name, defender:en?en.name:'현지 수비대',
+    general: genA ? genA.name : null,
     divs, defDivs, lossA:+lossA.toFixed(1), lossD:+lossD.toFixed(1), ratio:+ratio.toFixed(2), result, naval,
   };
   logEvent(`전투: ${pt.name}`,
